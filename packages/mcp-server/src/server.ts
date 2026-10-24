@@ -4,13 +4,16 @@ import {
   experienceSearchSchema,
   type MemoryService,
   type SkillProposalService,
+  type SkillReviewService,
   type SkillStore,
   safeError,
   saveSchema,
   searchSchema,
   skillGetSchema,
   skillListSchema,
+  skillPendingSchema,
   skillProposeSchema,
+  skillReviewRequestSchema,
   skillSearchSchema,
   skillValidateSchema,
 } from '@agentmind/core';
@@ -20,7 +23,12 @@ export function createServer(
   memory: MemoryService,
   experiences?: ExperienceService,
   captureEnabled = true,
-  skills?: { store: SkillStore; proposals: SkillProposalService; proposalEnabled: boolean },
+  skills?: {
+    store: SkillStore;
+    proposals: SkillProposalService;
+    proposalEnabled: boolean;
+    review?: SkillReviewService;
+  },
 ): McpServer {
   const server = new McpServer(
     { name: 'agentmind', version: '0.0.1' },
@@ -96,6 +104,48 @@ export function createServer(
     );
   }
   if (skills) {
+    if (skills.review) {
+      const review = skills.review;
+      server.registerTool(
+        'skill_pending',
+        {
+          description: 'Read bounded project candidate summaries. No approval authority.',
+          inputSchema: skillPendingSchema,
+          annotations: { readOnlyHint: true, openWorldHint: false },
+        },
+        (input) => run(() => review.pending(input)),
+      );
+      server.registerTool(
+        'skill_review',
+        {
+          description:
+            'Inspect the exact untrusted project version, current active target, evaluation and audit provenance. Read only; cannot approve or promote.',
+          inputSchema: skillReviewRequestSchema,
+          annotations: { readOnlyHint: true, openWorldHint: false },
+        },
+        (input) => run(() => review.review(input)),
+      );
+      server.registerTool(
+        'skill_diff',
+        {
+          description:
+            'Read structured before/after file differences against the actual active project version. Never executes content.',
+          inputSchema: skillReviewRequestSchema,
+          annotations: { readOnlyHint: true, openWorldHint: false },
+        },
+        (input) => run(() => review.diff(input)),
+      );
+      server.registerTool(
+        'skill_evaluation',
+        {
+          description:
+            'Read the latest evaluation of an exact project version. Static PASS is not human authorization or task success.',
+          inputSchema: skillReviewRequestSchema,
+          annotations: { readOnlyHint: true, openWorldHint: false },
+        },
+        (input) => run(() => review.evaluation(input)),
+      );
+    }
     if (skills.proposalEnabled)
       server.registerTool(
         'skill_propose',

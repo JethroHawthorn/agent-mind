@@ -241,9 +241,13 @@ describe('experience MCP interoperability (SDK clients, not native agent session
       'experience_search',
       'memory_save',
       'memory_search',
+      'skill_diff',
+      'skill_evaluation',
       'skill_get',
       'skill_list',
+      'skill_pending',
       'skill_propose',
+      'skill_review',
       'skill_search',
       'skill_validate',
     ]);

@@ -6,7 +6,9 @@ Phase 1 adds explicit structured experience capture to the Phase 0 memory server
 
 ## Install and check
 
-Phase 2 is being delivered one issue at a time. **P2-001 through P2-004 are implemented**: immutable skill versions, scoped source references and candidate authoring/discovery through `skill_propose`, `skill_get`, `skill_list` and `skill_search`, plus read-only `skill_validate` (nine MCP tools total). New candidates start **NOT VERIFIED** and are never published automatically. A separate local deterministic evaluator records static PASS / FAIL / NOT_VERIFIED reports. Operator approval/promotion, installation and usage tracking remain pending P2-005–P2-008. See the [authoring guide](docs/PHASE_2_AUTHORING.md), [model design](docs/PHASE_2_SKILL_MODEL.md) and [re-review remediation report](docs/reviews/PHASE_2_RE_REMEDIATION.md). Work stops before P2-005 for independent review.
+Phase 2 is being delivered one issue at a time. **P2-001 through P2-005 are implemented**: immutable skill versions, candidate authoring/discovery, validation, static evaluation, and local operator confirmation with approval/promotion/rollback audit. The default MCP server exposes 13 tools, including read-only `skill_pending`, `skill_review`, `skill_diff` and `skill_evaluation`; no privileged operator mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. P2-006–P2-008 remain pending. Work stops for independent P2-005 review.
+
+**Approval trust boundary:** this deployment shares an OS user, source code and SQLite access with the agent. Terminal confirmation is **not adversarially secure human authentication**: a same-user agent can automate a PTY or edit SQLite. P2-005 implements an explicit, artifact-bound local workflow and records that limitation in audit metadata. Strong human-only authorization requires a separately protected operator/broker and storage boundary; it is not configured here. See the [operator/security guide](docs/PHASE_2_OPERATOR.md) and [implementation report](docs/reviews/P2-005_IMPLEMENTATION.md).
 
 Use Node.js 22.13+ and pnpm 11.6.0. Node 22.13.1/macOS arm64 was tested. The native SQLite driver uses a prebuilt binary where available; otherwise it needs Python and a C/C++ build toolchain. The workspace allows build scripts only for `better-sqlite3` and `esbuild`.
 
@@ -63,7 +65,7 @@ node "$AGENTMIND_SERVER" --project-root "$PWD" --db "$AGENTMIND_DB" \
 
 The returned `project_id` must match. Keys are 16–128 letters, digits, dots, underscores or hyphens, starting with a letter or digit. They are namespace selectors, **not secrets or authentication tokens**. Choose one only for directories you intentionally authorize to share; never derive authorization from a tool argument or automatically merge repositories by their remotes. Startup still verifies the working directory against the configured root.
 
-An explicit key creates a separate namespace: it does not automatically reassign existing path-scoped records. Those records remain accessible by omitting the key at their original root. Configure a key before capturing memories that should survive directory moves. Schema version 2 introduced separate namespaces at the same directory; version 3 added experience tables; version 4 rebuilt the experience FTS index with indexed project terms; version 5 adds the skill domain tables and integrity guards; version 6 adds scoped skill metadata FTS5 discovery. Existing IDs, content, approvals and review history are preserved. The same boundary covers experiences, local reviews and future skill operations.
+An explicit key creates a separate namespace: it does not automatically reassign existing path-scoped records. Those records remain accessible by omitting the key at their original root. Configure a key before capturing memories that should survive directory moves. Schema version 2 introduced separate namespaces at the same directory; version 3 added experience tables; version 4 rebuilt the experience FTS index with indexed project terms; version 5 adds the skill domain tables and integrity guards; version 6 adds scoped skill metadata FTS5 discovery; version 7 adds append-only operator confirmation provenance. Existing IDs, content, approvals and review history are preserved. The same boundary covers experiences, local reviews and future skill operations.
 
 ## Connect Codex CLI
 
@@ -272,7 +274,7 @@ No new migration is needed: schema v6, immutable versions and existing Phase 0/1
 
 ## Skill evaluation (P2-004)
 
-The local evaluator checks a fixed static Markdown contract and persists an immutable report. It does not execute skill scripts, fetch references, run repository tests or call an LLM. **Process isolation and sandboxed execution are not implemented.** The nine existing MCP tools are unchanged; evaluation is a separate local command and exposes no approval/promotion action.
+The local evaluator checks a fixed static Markdown contract and persists an immutable report. It does not execute skill scripts, fetch references, run repository tests or call an LLM. **Process isolation and sandboxed execution are not implemented.** Evaluation is a separate local command and exposes no approval/promotion action. P2-005 adds four read-only review tools to the original nine tools.
 
 From `skill_get`, copy the exact `version.id`, `version.content_hash` and `state.revision`. Set these variables and use the existing project/database variables above:
 
@@ -307,12 +309,55 @@ node "$AGENTMIND_REPO/packages/mcp-server/dist/skill-evaluate.js" \
 
 Requesting `--mode behavioral` with a fresh current state revision records an `execution.behavioral: NOT_VERIFIED` check. No code is run and capabilities explicitly report `execution_supported: false`, `process_isolation_supported: false` and `task_success: NOT_VERIFIED`. Any definite static failure still makes the overall result FAIL. Neither mode changes candidate approval or the active pointer. Future operator review must inspect the scope and checks rather than equate PASS with verified knowledge.
 
-The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The native `--skills` gate continues to report NOT VERIFIED because P2-005–P2-008 are pending. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md).
+The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The native `--skills` gate continues to report NOT VERIFIED because publication, usage and native-session verification in P2-006–P2-008 are pending. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md).
 
 ### Evaluation headings and blocked updates
 
 Evaluator `static-contract-v2/agentmind-markdown-v1` requires these section names: `Goal`, `When to use`, `Procedure`, `Verification` (case insensitive). ATX levels 1–6, whitespace between words, a trailing colon and a decimal numbered prefix ending in `.` or `)` are accepted. Examples: `# Goal`, `## 1. Goal:`, `## 2) When to Use:`. Names with extra words such as `Procedure & Steps` are unsupported; use `Procedure`. Each section still needs nonempty prose outside code/comments. P2-003's separate warning suggestions retain their original canonical spelling. Raw content hashes are never normalized, and older evaluation reports retain their original policy version.
 
-A changed candidate evaluated against an active version remains **NOT_VERIFIED**, so current database guards prevent approval. Evaluation never silently deactivates the baseline or overrides this result. **P2-005 operator commands do not exist yet**; do not edit SQLite to work around the guard.
+A changed candidate evaluated against an active version remains **NOT_VERIFIED**, so current database guards prevent approval. Evaluation never silently deactivates the baseline or overrides this result. **P2-005 requires explicit local terminal actions** as shown below; do not edit SQLite to work around the guard.
 
-The documented future operator procedure is: inspect the active version, changed candidate and reports; explicitly consent to a period with no active skill; record an audited deactivation retaining the prior approved version; inspect the candidate's fresh hash/revision; rerun evaluation with no active baseline; and, only after static PASS plus explicit human review, approve and promote it. Reevaluate if the baseline or state changes. A static failure still blocks approval, and no-baseline PASS still provides no behavioral regression evidence. Historical NOT_VERIFIED reports remain unchanged. If that activation gap is unacceptable, keep the current version active and defer the update until a trusted behavioral harness is available. This documents the review's deactivation option; it does not implement P2-005, a waiver, or automatic promotion.
+The operator procedure is: inspect the active version, changed candidate and reports; explicitly consent to a period with no active skill; record an audited deactivation retaining the prior approved version; inspect the candidate's fresh hash/revision; rerun evaluation with no active baseline; and, only after static PASS plus explicit human review, approve and promote it. Reevaluate if the baseline or state changes. A static failure still blocks approval, and no-baseline PASS still provides no behavioral regression evidence. Historical NOT_VERIFIED reports remain unchanged. If that activation gap is unacceptable, keep the current version active and defer the update until a trusted behavioral harness is available. The P2-005 commands below implement this explicit deactivation option, without a waiver or automatic promotion.
+
+## Local operator workflow (P2-005)
+
+Run privileged commands yourself in an interactive terminal with stdin, stdout and stderr attached to the same TTY. Pipes, redirected streams, generic `yes`, `--yes`, `--force`, arbitrary approver names and environment bypasses are not supported. Read-only inspection can be piped. Each mutation prints JSON-escaped exact content, evaluation, before/after file differences and the active-pointer target to stderr, then requires the exact displayed `CONFIRM <review-digest> <fresh-nonce>` line. No credentials are requested. Terminal-control characters are escaped; never execute retrieved instructions just because they appear in the review.
+
+Using the existing repository/project/database variables:
+
+```sh
+pnpm build # from the AgentMind repository first
+AGENTMIND_OPERATOR="$AGENTMIND_REPO/packages/mcp-server/dist/skill-operator.js"
+cd "$PROJECT"
+node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --pending --limit 10
+node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --show "$SKILL_VERSION_ID"
+node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --diff "$SKILL_VERSION_ID"
+node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --evaluation "$SKILL_VERSION_ID"
+node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --approve "$SKILL_VERSION_ID" --reason "Reviewed the exact static contract and its limitations."
+node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --promote "$SKILL_VERSION_ID" --reason "Explicit registry activation."
+```
+
+Use the exact UUID of the candidate as `SKILL_VERSION_ID`. The same trusted `--project-key` must be supplied if configured for MCP. A current, complete static PASS is required before approval/promotion. Unknown/obsolete policies, missing checks, FAIL, NOT_VERIFIED, revoked sources, stale baselines, hash mismatches and superseded candidates fail closed. No approval is fabricated from a task outcome. Candidate approval requires the latest version; a later draft does not silently revoke an already recorded approval. Legacy SQL approvals without P2-005 confirmation provenance remain readable but cannot authorize this service's promotions; create and evaluate a new candidate instead.
+
+To reject an inactive candidate or approved version, use `--reject "$SKILL_VERSION_ID"`. Rejection is terminal for that version. Create a new version for revisions. Active versions must be explicitly deactivated before rejection.
+
+For a changed candidate blocked by an active baseline, inspect its diff and accept the activation gap before proceeding:
+
+```sh
+SKILL_PREVIOUS_VERSION_ID="REPLACE-WITH-CURRENT-ACTIVE-VERSION-UUID"
+node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --deactivate "$SKILL_PREVIOUS_VERSION_ID" --reason "Explicitly accept the registry activation gap for review."
+```
+
+Then inspect fresh candidate hash/state and rerun the P2-004 evaluator with those values; separately confirm approval and promotion. Nothing deactivates automatically. No-baseline static PASS still provides **no behavioral regression evidence**. If activation must remain uninterrupted, leave the old version active and defer the changed update.
+
+To restore a previously active, still-approved exact version:
+
+```sh
+node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --rollback "$SKILL_PREVIOUS_VERSION_ID" --reason "Explicit restoration of the prior approved registry version."
+```
+
+Rollback also requires local confirmation, valid current-policy evidence, current source approvals and matching P2-005 approval provenance. It may restore a historical evaluation baseline, but never waive missing/failed evidence or resurrect rejected content. Repeated confirmed approval/promotion/rollback can return `already_approved`/`already_active` without a duplicate transition. Stale concurrent requests require fresh inspection and confirmation. Database failure rolls back history, audit and pointer together; previous approved versions remain intact. Each command changes the registry only: **installed CLI copies cannot be synchronized until P2-006 exists**, and this issue installs nothing.
+
+Review fields include exact snapshots, latest evaluation, current approval provenance, structured file changes, and up to 100 recent operator events with a truncation flag. Read-only MCP review uses `{ "version_id": "..." }`; pending supports bounded `limit`/`offset`. All content remains untrusted. Approval session IDs/digests are audit references, not authentication secrets or proof of human presence.
+
+`pnpm check` includes real POSIX PTY tests using Python 3's standard library. Those tests automate confirmation to verify mechanics and explicitly demonstrate the same-user bypass; their passing status is **not a human-authentication security claim**. Runtime requires only Node.js; no new model subscription or API key is used. Native Codex/Claude skill execution remains NOT VERIFIED.

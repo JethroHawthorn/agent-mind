@@ -65,7 +65,7 @@ it('upgrades actual schema v3 and preserves content, approvals, audit rows and P
   const audit = db.prepare('SELECT * FROM experience_reviews').all();
   migrate(db);
   migrate(db);
-  expect(db.pragma('user_version', { simple: true })).toBe(6);
+  expect(db.pragma('user_version', { simple: true })).toBe(7);
   expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
   expect(db.pragma('foreign_key_check')).toEqual([]);
   expect(db.prepare('SELECT * FROM experiences').all()).toEqual(before);

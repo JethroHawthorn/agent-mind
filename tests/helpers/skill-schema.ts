@@ -6,6 +6,7 @@ export function removeSkillSchema(db: Database.Database): void {
   db.pragma('foreign_keys = OFF');
   try {
     db.exec(`
+      DROP TABLE IF EXISTS skill_operator_events;
       DROP TABLE IF EXISTS skills_fts;
       DROP TABLE skill_promotions;
       DROP TABLE skill_reviews;

@@ -122,7 +122,7 @@ it('denies authority injection, foreign retrieval and every privileged skill act
       ).isError,
     ).toBe(true);
   }
-  for (const name of ['skill_review', 'skill_promote', 'skill_rollback', 'skill_evaluate']) {
+  for (const name of ['skill_approve', 'skill_promote', 'skill_rollback', 'skill_evaluate']) {
     expect((await client.callTool({ name, arguments: {} })).isError).toBe(true);
   }
   const saved = data(

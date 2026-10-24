@@ -4,6 +4,7 @@ import {
   MemoryService,
   openDatabase,
   SkillProposalService,
+  SkillReviewService,
   SkillStore,
   safeError,
 } from '@agentmind/core';
@@ -39,6 +40,7 @@ async function main(): Promise<void> {
         config.proposalEnabled,
       ),
       proposalEnabled: config.proposalEnabled,
+      review: new SkillReviewService(db, config.project),
     });
     const shutdown = createShutdown({
       closeServer: () => server.close(),
