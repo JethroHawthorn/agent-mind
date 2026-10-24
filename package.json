@@ -1,0 +1,31 @@
+{
+  "name": "agentmind",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.6.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "pnpm --filter @agentmind/core build && pnpm --filter @agentmind/mcp-server build",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "test": "pnpm build && vitest run",
+    "start": "node packages/mcp-server/dist/index.js",
+    "smoke": "node scripts/smoke.mjs",
+    "verify:cli": "node scripts/verify-cli.mjs",
+    "lint": "biome check --error-on-warnings .",
+    "format:check": "biome format .",
+    "format": "biome check --write .",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm smoke"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.2",
+    "better-sqlite3": "^12.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.0",
+    "@modelcontextprotocol/sdk": "^1.27.1"
+  }
+}

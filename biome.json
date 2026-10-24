@@ -1,0 +1,18 @@
+{
+  "files": {
+    "includes": [
+      "packages/**/*.ts",
+      "packages/**/package.json",
+      "packages/**/tsconfig.json",
+      "tests/**/*.ts",
+      "tests/**/*.mjs",
+      "scripts/**/*.mjs",
+      "*.json",
+      "*.ts",
+      "!**/dist"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "javascript": { "formatter": { "quoteStyle": "single" } },
+  "linter": { "rules": { "preset": "recommended" } }
+}

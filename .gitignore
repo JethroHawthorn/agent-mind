@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.pnpm-store/
+coverage/
+.agentmind/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+docs/
