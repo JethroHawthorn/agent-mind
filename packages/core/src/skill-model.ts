@@ -158,3 +158,5 @@ export function hashSkillFiles(input: unknown): string {
     .map(({ path, content }) => ({ path, content }));
   return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
 }
+
+export type SkillEvaluationCheck = z.infer<typeof skillEvaluationCheckSchema>;

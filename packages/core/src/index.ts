@@ -7,6 +7,8 @@ export * from './memory.js';
 export * from './privacy.js';
 export * from './project.js';
 export * from './schemas.js';
+export * from './skill-evaluation.js';
+export * from './skill-evaluation-engine.js';
 export * from './skill-model.js';
 export * from './skill-proposal.js';
 export * from './skill-requests.js';

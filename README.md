@@ -6,7 +6,7 @@ Phase 1 adds explicit structured experience capture to the Phase 0 memory server
 
 ## Install and check
 
-Phase 2 is being delivered one issue at a time. **P2-001 through P2-003 are implemented**: immutable skill versions, scoped source references and candidate authoring/discovery through `skill_propose`, `skill_get`, `skill_list` and `skill_search`, plus read-only `skill_validate` (nine MCP tools total). Candidates remain **NOT VERIFIED** and are never published automatically. Evaluation, operator approval/promotion, installation and usage tracking remain pending P2-004–P2-008. See the [authoring guide](docs/PHASE_2_AUTHORING.md), [model design](docs/PHASE_2_SKILL_MODEL.md) and [re-review remediation report](docs/reviews/PHASE_2_RE_REMEDIATION.md). Work stops before P2-004 for review.
+Phase 2 is being delivered one issue at a time. **P2-001 through P2-004 are implemented**: immutable skill versions, scoped source references and candidate authoring/discovery through `skill_propose`, `skill_get`, `skill_list` and `skill_search`, plus read-only `skill_validate` (nine MCP tools total). New candidates start **NOT VERIFIED** and are never published automatically. A separate local deterministic evaluator records static PASS / FAIL / NOT_VERIFIED reports. Operator approval/promotion, installation and usage tracking remain pending P2-005–P2-008. See the [authoring guide](docs/PHASE_2_AUTHORING.md), [model design](docs/PHASE_2_SKILL_MODEL.md) and [re-review remediation report](docs/reviews/PHASE_2_RE_REMEDIATION.md). Work stops before P2-005 for independent review.
 
 Use Node.js 22.13+ and pnpm 11.6.0. Node 22.13.1/macOS arm64 was tested. The native SQLite driver uses a prebuilt binary where available; otherwise it needs Python and a C/C++ build toolchain. The workspace allows build scripts only for `better-sqlite3` and `esbuild`.
 
@@ -246,7 +246,7 @@ To propose a later immutable version, inspect the latest version and pass that n
 
 Start the server with `--disable-skill-proposals` to disable authoring while preserving retrieval and Phase 0/1 tools. Source agent and project scope come from trusted startup options; requests cannot set approval, actor, reviewer, source agent or project fields. Retrieval is untrusted reference data, never authorization to execute instructions.
 
-Current ingestion accepts `SKILL.md` and Markdown under `references/` only, with bounded YAML, safe paths and secret checks. P2-003 validation is enforced before proposal storage; P2-004 evaluation remains pending. No skill approval/promotion MCP tool is exposed. `node scripts/verify-cli.mjs --skills` exits nonzero with **NOT VERIFIED** until the evaluation, operator and publication prerequisites exist; it does not run the memory gate as a substitute.
+Current ingestion accepts `SKILL.md` and Markdown under `references/` only, with bounded YAML, safe paths and secret checks. P2-003 validation is enforced before proposal storage; P2-004 now provides a separate local static evaluator. Behavioral execution remains unavailable. No skill approval/promotion MCP tool is exposed. `node scripts/verify-cli.mjs --skills` exits nonzero with **NOT VERIFIED** until the evaluation, operator and publication prerequisites exist; it does not run the memory gate as a substitute.
 
 ## Skill validation (P2-003)
 
@@ -269,3 +269,50 @@ Replace the UUID with a saved version. Expect `validation_result: VALID`, `evalu
 The versioned validation policy rejects malformed/mismatched YAML, aliases/tags/reserved metadata keys, unsupported or unsafe paths, reserved device filenames, oversized or duplicate file entries, known secret patterns, recognizable transcripts, suspicious bypass instructions and active executable markup. Local Markdown references must stay within the supplied snapshot; HTTP(S) references are inert and never fetched. Bash examples in Markdown remain text and are never executed. Suggested Goal/When to use/Procedure/Verification headings produce warnings when absent; they are not Agent Skills format requirements. Detectors are heuristic and may miss attacks or reject benign examples. **VALID is neither evaluation PASS nor human approval.**
 
 No new migration is needed: schema v6, immutable versions and existing Phase 0/1 APIs are preserved. See [validation policy and limitations](docs/PHASE_2_VALIDATION.md). Native CLI skill use remains **NOT VERIFIED**.
+
+## Skill evaluation (P2-004)
+
+The local evaluator checks a fixed static Markdown contract and persists an immutable report. It does not execute skill scripts, fetch references, run repository tests or call an LLM. **Process isolation and sandboxed execution are not implemented.** The nine existing MCP tools are unchanged; evaluation is a separate local command and exposes no approval/promotion action.
+
+From `skill_get`, copy the exact `version.id`, `version.content_hash` and `state.revision`. Set these variables and use the existing project/database variables above:
+
+```sh
+SKILL_VERSION_ID="REPLACE-WITH-VERSION-UUID"
+SKILL_CONTENT_HASH="REPLACE-WITH-64-CHARACTER-CONTENT-HASH"
+SKILL_STATE_REVISION="0" # use the actual current state.revision
+cd "$PROJECT"
+node "$AGENTMIND_REPO/packages/mcp-server/dist/skill-evaluate.js" \
+  --project-root "$PROJECT" --db "$AGENTMIND_DB" \
+  --version-id "$SKILL_VERSION_ID" \
+  --expected-content-hash "$SKILL_CONTENT_HASH" \
+  --expected-state-revision "$SKILL_STATE_REVISION" --mode static
+```
+
+If using a trusted project key, pass the same `--project-key` configured on the MCP server. JSON success output goes to stdout; diagnostics go to stderr. Exit 0 means a report was recorded/read, including FAIL or NOT_VERIFIED; inspect `evaluation.result` before making decisions. Configuration, scope, stale input or storage errors exit 1. A lost response requires report/state inspection before retrying.
+
+A static **PASS** means current validation, nonempty Goal/When to use/Procedure/Verification sections, current source approvals and applicable static regression checks passed. It does not prove the procedure solves a task or grant human approval. New candidates missing these sections can still be stored under P2-003, but fail this evaluator's stricter contract. Hash corruption aborts with no report; stale hash/revision inputs also fail closed. No-baseline reports have `regression_result: NOT_VERIFIED` because comparison is inapplicable.
+
+With an active version, identical content/description can pass static comparison. Lost static coverage fails; changed content with passing static checks produces **NOT_VERIFIED** for regression. This evaluator cannot certify improved task behavior from text alone. Reports bind the actual active baseline UUID/hash and retain that historical binding if the pointer later changes.
+
+Inspect a report from a fresh process, or list a version's evaluation history:
+
+```sh
+SKILL_EVALUATION_ID="REPLACE-WITH-RETURNED-EVALUATION-UUID"
+node "$AGENTMIND_REPO/packages/mcp-server/dist/skill-evaluate.js" \
+  --project-root "$PROJECT" --db "$AGENTMIND_DB" --report-id "$SKILL_EVALUATION_ID"
+node "$AGENTMIND_REPO/packages/mcp-server/dist/skill-evaluate.js" \
+  --project-root "$PROJECT" --db "$AGENTMIND_DB" \
+  --list-version-id "$SKILL_VERSION_ID" --limit 10 --offset 0
+```
+
+Requesting `--mode behavioral` with a fresh current state revision records an `execution.behavioral: NOT_VERIFIED` check. No code is run and capabilities explicitly report `execution_supported: false`, `process_isolation_supported: false` and `task_success: NOT_VERIFIED`. Any definite static failure still makes the overall result FAIL. Neither mode changes candidate approval or the active pointer. Future operator review must inspect the scope and checks rather than equate PASS with verified knowledge.
+
+The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The native `--skills` gate continues to report NOT VERIFIED because P2-005–P2-008 are pending. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md).
+
+### Evaluation headings and blocked updates
+
+Evaluator `static-contract-v2/agentmind-markdown-v1` requires these section names: `Goal`, `When to use`, `Procedure`, `Verification` (case insensitive). ATX levels 1–6, whitespace between words, a trailing colon and a decimal numbered prefix ending in `.` or `)` are accepted. Examples: `# Goal`, `## 1. Goal:`, `## 2) When to Use:`. Names with extra words such as `Procedure & Steps` are unsupported; use `Procedure`. Each section still needs nonempty prose outside code/comments. P2-003's separate warning suggestions retain their original canonical spelling. Raw content hashes are never normalized, and older evaluation reports retain their original policy version.
+
+A changed candidate evaluated against an active version remains **NOT_VERIFIED**, so current database guards prevent approval. Evaluation never silently deactivates the baseline or overrides this result. **P2-005 operator commands do not exist yet**; do not edit SQLite to work around the guard.
+
+The documented future operator procedure is: inspect the active version, changed candidate and reports; explicitly consent to a period with no active skill; record an audited deactivation retaining the prior approved version; inspect the candidate's fresh hash/revision; rerun evaluation with no active baseline; and, only after static PASS plus explicit human review, approve and promote it. Reevaluate if the baseline or state changes. A static failure still blocks approval, and no-baseline PASS still provides no behavioral regression evidence. Historical NOT_VERIFIED reports remain unchanged. If that activation gap is unacceptable, keep the current version active and defer the update until a trusted behavioral harness is available. This documents the review's deactivation option; it does not implement P2-005, a waiver, or automatic promotion.
