@@ -83,6 +83,7 @@ export class MemoryService {
     if (result !== 'ok')
       throw new AgentMindError('DATABASE_UNHEALTHY', 'SQLite integrity check failed.');
     this.db.prepare('SELECT rowid FROM memories_fts LIMIT 0').all();
+    this.db.prepare('SELECT rowid FROM experiences_fts LIMIT 0').all();
     return { ok: true, schema_version: SCHEMA_VERSION, project_id: this.#project.id };
   }
 }

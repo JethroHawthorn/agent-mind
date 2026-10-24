@@ -32,8 +32,19 @@ try {
   assert.deepEqual(found.memories, [saved.memory]);
   const isolated = await call(other, 'unknown', 'memory_search', { query: 'Orchid' });
   assert.deepEqual(isolated.memories, []);
+  const recorded = call(project, 'codex', 'experience_record', {
+    problem: 'Orchid SQLite startup failed',
+    solution: 'Retry journal mode changes on busy errors',
+    outcome: { status: 'succeeded', summary: 'The local concurrency fixture passed.' },
+    evidence: [{ kind: 'test', reference: 'tests/integration/experience-mcp.test.ts' }],
+  });
+  const experience = call(project, 'claude', 'experience_search', { query: 'Orchid SQLite' });
+  assert.equal(experience.experiences[0].id, recorded.experience.id);
+  assert.equal(experience.experiences[0].approval_status, 'candidate');
+  assert.equal(experience.experiences[0].verification_status, 'unverified');
+  assert.deepEqual(call(other, 'claude', 'experience_search', { query: 'Orchid' }).experiences, []);
   console.log(
-    'PASS: separate SDK client/server processes, restart persistence, project isolation. Real CLIs were not exercised.',
+    'PASS: memory + experience sharing across SDK client/server processes, restart persistence, project isolation. Real CLIs were not exercised.',
   );
 } finally {
   rmSync(dir, { recursive: true, force: true });

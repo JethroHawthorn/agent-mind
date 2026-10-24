@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { MemoryService, openDatabase, safeError } from '@agentmind/core';
+import { ExperienceService, MemoryService, openDatabase, safeError } from '@agentmind/core';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { readConfig } from './config.js';
 import { createServer } from './server.js';
@@ -17,7 +17,13 @@ async function main(): Promise<void> {
       db.close();
       return;
     }
-    const server = createServer(memory);
+    const experiences = new ExperienceService(
+      db,
+      config.project,
+      config.sourceAgent,
+      config.captureEnabled,
+    );
+    const server = createServer(memory, experiences, config.captureEnabled);
     const shutdown = createShutdown({
       closeServer: () => server.close(),
       closeDatabase: () => {

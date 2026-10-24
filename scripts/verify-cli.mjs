@@ -12,6 +12,7 @@ const project = mkdtempSync(join(tmpdir(), 'agentmind-live-'));
 const db = join(project, 'memory.db');
 const marker = `handoff${randomUUID().replaceAll('-', '')}`;
 const status = { codex_save: false, claude_search: false, claude_restart_search: false };
+const experiences = process.argv.includes('--experiences');
 const serverArgs = (agent) => [
   entry,
   '--project-root',
@@ -105,31 +106,33 @@ try {
     `mcp_servers.agentmind.command=${JSON.stringify(process.execPath)}`,
     '-c',
     `mcp_servers.agentmind.args=${JSON.stringify(serverArgs('codex'))}`,
-    `Call agentmind memory_save exactly once with title "Live handoff", content "${marker} uses SQLite WAL.", kind "decision". Do not use shell tools or edit files.`,
+    experiences
+      ? `Call agentmind experience_record exactly once with problem "${marker} concurrent SQLite startup failed", solution "Retry journal mode changes on busy errors", outcome {"status":"succeeded","summary":"The local test fixture passed; this remains unverified."}, evidence [{"kind":"test","reference":"tests/integration/experience-mcp.test.ts"}]. Do not use shell tools or edit files.`
+      : `Call agentmind memory_save exactly once with title "Live handoff", content "${marker} uses SQLite WAL.", kind "decision". Do not use shell tools or edit files.`,
   ]);
-  const saved = savedByCodex(codex, marker);
+  const saved = savedByCodex(codex, marker, experiences);
   status.codex_save = true;
   const config = JSON.stringify({
     mcpServers: { agentmind: { command: process.execPath, args: serverArgs('claude') } },
   });
   const args = [
     '-p',
-    `Call agentmind memory_search with query "${marker}". Report its results. Do not save anything or use other tools.`,
+    `Call agentmind ${experiences ? 'experience_search' : 'memory_search'} with query "${marker}". Report its results. Do not save anything or use other tools.`,
     '--strict-mcp-config',
     '--mcp-config',
     config,
     '--tools',
     '',
     '--allowedTools',
-    'mcp__agentmind__memory_search',
+    experiences ? 'mcp__agentmind__experience_search' : 'mcp__agentmind__memory_search',
     '--output-format',
     'stream-json',
     '--verbose',
     '--no-session-persistence',
   ];
-  retrievedByClaude(await run('claude', args), saved);
+  retrievedByClaude(await run('claude', args), saved, experiences);
   status.claude_search = true;
-  retrievedByClaude(await run('claude', args), saved);
+  retrievedByClaude(await run('claude', args), saved, experiences);
   status.claude_restart_search = true;
   console.log(JSON.stringify({ ok: true, ...status, memory_id: saved.id }));
 } catch (error) {

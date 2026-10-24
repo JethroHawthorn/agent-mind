@@ -82,7 +82,7 @@ describe('storage and search', () => {
     });
     migrate(db);
     migrate(db);
-    expect(service.health().schema_version).toBe(2);
+    expect(service.health().schema_version).toBe(4);
     expect(db.prepare('SELECT count(*) AS n FROM memories').get()).toEqual({ n: 1 });
     db.close();
     const reopened = openDatabase(join(dir, 'memory.db'));
@@ -111,10 +111,10 @@ describe('storage and search', () => {
     const saved = service.save({ title: 'Before upgrade', content: 'Legacy migration memory' });
     // Recreate the only structural difference in v1: unique canonical paths.
     db.exec(
-      'CREATE UNIQUE INDEX projects_v1_path ON projects(canonical_path); PRAGMA user_version = 1',
+      'DROP TABLE experience_reviews; DROP TABLE experiences_fts; DROP TABLE experiences; CREATE UNIQUE INDEX projects_v1_path ON projects(canonical_path); PRAGMA user_version = 1',
     );
     migrate(db);
-    expect(db.pragma('user_version', { simple: true })).toBe(2);
+    expect(db.pragma('user_version', { simple: true })).toBe(4);
     expect(db.pragma('foreign_key_check')).toEqual([]);
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(service.search({ query: 'migration' })).toEqual([saved]);

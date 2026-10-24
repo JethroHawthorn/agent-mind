@@ -2,8 +2,10 @@ import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import Database from 'better-sqlite3';
 import { AgentMindError } from './errors.js';
+import { migrateExperiences } from './experience-migration.js';
+import { migrateExperienceScopeIndex } from './experience-scope-migration.js';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 4;
 
 export function migrate(db: Database.Database): void {
   if (db.inTransaction)
@@ -66,6 +68,8 @@ export function migrate(db: Database.Database): void {
         PRAGMA user_version = 2;
       `);
       }
+      if (version < 3) migrateExperiences(db);
+      if (version < 4) migrateExperienceScopeIndex(db);
       const violations = db.pragma('foreign_key_check') as unknown[];
       if (violations.length) {
         throw new AgentMindError(
@@ -117,6 +121,7 @@ export function openDatabase(path: string): Database.Database {
     migrate(db);
     // Also verifies FTS5 on already-migrated databases.
     db.prepare('SELECT rowid FROM memories_fts LIMIT 0').all();
+    db.prepare('SELECT rowid FROM experiences_fts LIMIT 0').all();
     return db;
   } catch (error) {
     db?.close();

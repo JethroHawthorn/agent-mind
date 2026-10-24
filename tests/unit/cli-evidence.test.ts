@@ -82,3 +82,68 @@ it('requires a correlated successful Claude tool result with matching content an
     ),
   ).toThrow();
 });
+
+it('validates native experience handoff using tool events and candidate/unverified labels', () => {
+  const experience = {
+    id: 'experience-id',
+    project_id: 'project',
+    problem: 'unique-marker SQLite startup',
+    solution: 'Retry journal mode changes',
+    source_agent: 'codex',
+    approval_status: 'candidate',
+    verification_status: 'unverified',
+  };
+  const event = {
+    ...saveEvent,
+    item: {
+      ...saveEvent.item,
+      tool: 'experience_record',
+      result: {
+        content: [{ type: 'text', text: JSON.stringify({ experience }) }],
+      },
+    },
+  };
+  expect(savedByCodex([event], 'unique-marker', true)).toEqual(experience);
+  const searches = [
+    {
+      type: 'assistant',
+      message: {
+        content: [
+          { type: 'tool_use', name: 'mcp__agentmind__experience_search', id: 'experience-search' },
+        ],
+      },
+    },
+    {
+      type: 'user',
+      message: {
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'experience-search',
+            content: JSON.stringify({ experiences: [experience] }),
+          },
+        ],
+      },
+    },
+  ];
+  expect(() => retrievedByClaude(searches, experience, true)).not.toThrow();
+  expect(() => retrievedByClaude(searches, { ...experience, solution: 'changed' }, true)).toThrow();
+  const forged = {
+    ...event,
+    item: {
+      ...event.item,
+      result: {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              experience: { ...experience, verification_status: 'verified' },
+            }),
+          },
+        ],
+      },
+    },
+  };
+  expect(() => savedByCodex([forged], 'unique-marker', true)).toThrow();
+  expect(() => savedByCodex([event], 'unique-marker')).toThrow();
+});

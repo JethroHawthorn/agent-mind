@@ -127,6 +127,8 @@ describe('real stdio MCP processes', () => {
     const { a, db } = fixture();
     const first = await connect(a, db, 'codex');
     expect((await first.client.listTools()).tools.map((t) => t.name).sort()).toEqual([
+      'experience_record',
+      'experience_search',
       'memory_save',
       'memory_search',
     ]);

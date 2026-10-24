@@ -13,6 +13,24 @@ const credentialValues = [
   /\bBearer\s+(?:[A-Za-z0-9._~+/-]{8,}|<[^>]+>)/i,
 ];
 
+/** Experience-only redaction. Phase 0 memory saves retain their rejection behavior. */
+export function redactSecrets(value: string): string {
+  let text = value.replace(
+    /-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----[\s\S]*?(?:-----END (?:[A-Z]+ )*PRIVATE KEY-----|$)/gi,
+    '[REDACTED]',
+  );
+  // Remove bearer values before generic assignments so "Authorization: Bearer"
+  // cannot consume the prefix and leave the credential behind.
+  text = text.replace(/\bBearer\s+(?:[A-Za-z0-9._~+/-]+|<[^>]+>)/gi, '[REDACTED]');
+  for (const pattern of secretPatterns) {
+    text = text.replace(new RegExp(pattern.source, `${pattern.flags}g`), '[REDACTED]');
+  }
+  return text.replace(
+    /\b(?:password|passwd|api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization|token|secret|cookie|aws_secret_access_key)["']?\s*[=:]\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/gi,
+    '[REDACTED]',
+  );
+}
+
 /** Best-effort rejection; callers must still save only deliberate, non-secret summaries. */
 export function assertSafeSummary(text: string): void {
   // Exempt only explicit angle-bracket documentation placeholders in value
