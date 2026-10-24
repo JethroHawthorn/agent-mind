@@ -131,6 +131,11 @@ describe('real stdio MCP processes', () => {
       'experience_search',
       'memory_save',
       'memory_search',
+      'skill_get',
+      'skill_list',
+      'skill_propose',
+      'skill_search',
+      'skill_validate',
     ]);
     await first.client.ping();
     const saved = resultData(

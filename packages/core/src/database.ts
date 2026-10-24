@@ -4,8 +4,10 @@ import Database from 'better-sqlite3';
 import { AgentMindError } from './errors.js';
 import { migrateExperiences } from './experience-migration.js';
 import { migrateExperienceScopeIndex } from './experience-scope-migration.js';
+import { migrateSkills } from './skill-migration.js';
+import { migrateSkillDiscovery } from './skill-search-migration.js';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 6;
 
 export function migrate(db: Database.Database): void {
   if (db.inTransaction)
@@ -70,6 +72,8 @@ export function migrate(db: Database.Database): void {
       }
       if (version < 3) migrateExperiences(db);
       if (version < 4) migrateExperienceScopeIndex(db);
+      if (version < 5) migrateSkills(db);
+      if (version < 6) migrateSkillDiscovery(db);
       const violations = db.pragma('foreign_key_check') as unknown[];
       if (violations.length) {
         throw new AgentMindError(
@@ -122,6 +126,7 @@ export function openDatabase(path: string): Database.Database {
     // Also verifies FTS5 on already-migrated databases.
     db.prepare('SELECT rowid FROM memories_fts LIMIT 0').all();
     db.prepare('SELECT rowid FROM experiences_fts LIMIT 0').all();
+    db.prepare('SELECT rowid FROM skills_fts LIMIT 0').all();
     return db;
   } catch (error) {
     db?.close();

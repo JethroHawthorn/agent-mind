@@ -11,6 +11,7 @@ import {
   openDatabase,
   resolveProject,
 } from '../../packages/core/src/index.js';
+import { removeSkillSchema } from '../helpers/skill-schema.js';
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {
@@ -32,6 +33,7 @@ function legacyFixture() {
     title: 'Legacy memory',
     content: 'SQLite memory survives scope migration',
   });
+  removeSkillSchema(db);
   db.exec(
     'DROP TABLE experience_reviews; DROP TABLE experiences_fts; DROP TABLE experiences; PRAGMA user_version = 2',
   );
@@ -63,7 +65,7 @@ it('upgrades actual schema v3 and preserves content, approvals, audit rows and P
   const audit = db.prepare('SELECT * FROM experience_reviews').all();
   migrate(db);
   migrate(db);
-  expect(db.pragma('user_version', { simple: true })).toBe(4);
+  expect(db.pragma('user_version', { simple: true })).toBe(6);
   expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
   expect(db.pragma('foreign_key_check')).toEqual([]);
   expect(db.prepare('SELECT * FROM experiences').all()).toEqual(before);

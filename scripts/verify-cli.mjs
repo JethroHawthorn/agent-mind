@@ -5,14 +5,40 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { retrievedByClaude, savedByCodex } from './cli-evidence.mjs';
 
+let flags;
+try {
+  flags = parseArgs({
+    options: { experiences: { type: 'boolean' }, skills: { type: 'boolean' } },
+    strict: true,
+    allowPositionals: false,
+  }).values;
+} catch {
+  console.error('Use no arguments for the memory gate, or --experiences.');
+  process.exit(1);
+}
+if (flags.skills) {
+  console.error(
+    'The native skill workflow gate is unavailable until evaluation, operator review, publication and usage prerequisites are implemented.',
+  );
+  console.log(
+    JSON.stringify({
+      ok: false,
+      cross_cli: 'NOT VERIFIED',
+      gate: 'skills',
+      reason: 'P2-008 prerequisites are pending',
+    }),
+  );
+  process.exit(1);
+}
 const entry = fileURLToPath(new URL('../packages/mcp-server/dist/index.js', import.meta.url));
 const project = mkdtempSync(join(tmpdir(), 'agentmind-live-'));
 const db = join(project, 'memory.db');
 const marker = `handoff${randomUUID().replaceAll('-', '')}`;
 const status = { codex_save: false, claude_search: false, claude_restart_search: false };
-const experiences = process.argv.includes('--experiences');
+const experiences = Boolean(flags.experiences);
 const serverArgs = (agent) => [
   entry,
   '--project-root',

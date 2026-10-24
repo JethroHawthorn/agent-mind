@@ -14,6 +14,7 @@ export function readConfig(args = process.argv.slice(2)) {
         'source-agent': { type: 'string', default: 'unknown' },
         health: { type: 'boolean', default: false },
         'disable-experience-capture': { type: 'boolean', default: false },
+        'disable-skill-proposals': { type: 'boolean', default: false },
       },
       strict: true,
       allowPositionals: false,
@@ -30,12 +31,13 @@ export function readConfig(args = process.argv.slice(2)) {
       sourceAgent: sourceAgent as 'codex' | 'claude' | 'unknown',
       health: values.health,
       captureEnabled: !values['disable-experience-capture'],
+      proposalEnabled: !values['disable-skill-proposals'],
     };
   } catch (error) {
     if (error instanceof AgentMindError) throw error;
     throw new AgentMindError(
       'INVALID_CONFIG',
-      'Use --project-root /absolute/project [--project-key trusted-stable-key] [--db /absolute/memory.db] [--source-agent codex|claude|unknown] [--disable-experience-capture] [--health].',
+      'Use --project-root /absolute/project [--project-key trusted-stable-key] [--db /absolute/memory.db] [--source-agent codex|claude|unknown] [--disable-experience-capture] [--disable-skill-proposals] [--health].',
     );
   }
 }

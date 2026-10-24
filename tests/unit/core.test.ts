@@ -10,6 +10,7 @@ import {
   resolveProject,
   safeError,
 } from '../../packages/core/src/index.js';
+import { removeSkillSchema } from '../helpers/skill-schema.js';
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {
@@ -82,7 +83,7 @@ describe('storage and search', () => {
     });
     migrate(db);
     migrate(db);
-    expect(service.health().schema_version).toBe(4);
+    expect(service.health().schema_version).toBe(6);
     expect(db.prepare('SELECT count(*) AS n FROM memories').get()).toEqual({ n: 1 });
     db.close();
     const reopened = openDatabase(join(dir, 'memory.db'));
@@ -110,11 +111,12 @@ describe('storage and search', () => {
     const { db, a, service } = fixture();
     const saved = service.save({ title: 'Before upgrade', content: 'Legacy migration memory' });
     // Recreate the only structural difference in v1: unique canonical paths.
+    removeSkillSchema(db);
     db.exec(
       'DROP TABLE experience_reviews; DROP TABLE experiences_fts; DROP TABLE experiences; CREATE UNIQUE INDEX projects_v1_path ON projects(canonical_path); PRAGMA user_version = 1',
     );
     migrate(db);
-    expect(db.pragma('user_version', { simple: true })).toBe(4);
+    expect(db.pragma('user_version', { simple: true })).toBe(6);
     expect(db.pragma('foreign_key_check')).toEqual([]);
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     expect(service.search({ query: 'migration' })).toEqual([saved]);
@@ -129,6 +131,7 @@ describe('storage and search', () => {
       title: 'Upgrade safety',
       content: 'Memory before migration failure',
     });
+    removeSkillSchema(db);
     db.exec('PRAGMA user_version = 1; CREATE TABLE projects_v2 (id TEXT)');
     expect(() => migrate(db)).toThrow();
     expect(db.pragma('user_version', { simple: true })).toBe(1);

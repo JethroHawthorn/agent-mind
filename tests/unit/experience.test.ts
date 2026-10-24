@@ -10,6 +10,7 @@ import {
   openDatabase,
   resolveProject,
 } from '../../packages/core/src/index.js';
+import { removeSkillSchema } from '../helpers/skill-schema.js';
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {
@@ -372,12 +373,13 @@ describe('migration and durability', () => {
       title: 'Legacy memory',
       content: 'SQLite Phase zero decision',
     });
+    removeSkillSchema(db);
     db.exec(
       'DROP TABLE experience_reviews; DROP TABLE experiences_fts; DROP TABLE experiences; PRAGMA user_version = 2',
     );
     migrate(db);
     migrate(db);
-    expect(db.pragma('user_version', { simple: true })).toBe(4);
+    expect(db.pragma('user_version', { simple: true })).toBe(6);
     expect(new MemoryService(db, project).search({ query: 'SQLite' })).toEqual([memory]);
     const saved = review(service, record(service).id);
     db.close();
@@ -395,6 +397,7 @@ describe('migration and durability', () => {
   });
   it('rolls back migration v3 failures and restores foreign-key enforcement', () => {
     const { db } = fixture();
+    removeSkillSchema(db);
     db.exec(
       'DROP TABLE experience_reviews; DROP TABLE experiences_fts; DROP TABLE experiences; CREATE TABLE experience_reviews(id TEXT); PRAGMA user_version = 2',
     );

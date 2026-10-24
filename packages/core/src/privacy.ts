@@ -6,7 +6,8 @@ const secretPatterns = [
   /\bAIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])/,
   /\b(?:sk|rk)_(?:live|test)_[0-9A-Za-z]{16,}\b/,
   /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/,
-  /[a-z][a-z0-9+.-]*:\/\/[^\s/:]+:[^\s/@]+@/i,
+  // A fixed delimiter avoids quadratic scheme backtracking on long skill text.
+  /:\/\/[^\s/:]+:[^\s/@]+@/i,
 ];
 const credentialValues = [
   /\b(?:password|passwd|api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|authorization)\s*[=:]\s*\S+/i,

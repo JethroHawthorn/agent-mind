@@ -241,6 +241,11 @@ describe('experience MCP interoperability (SDK clients, not native agent session
       'experience_search',
       'memory_save',
       'memory_search',
+      'skill_get',
+      'skill_list',
+      'skill_propose',
+      'skill_search',
+      'skill_validate',
     ]);
     expect((await client.callTool({ name: 'experience_record', arguments: input })).isError).toBe(
       true,

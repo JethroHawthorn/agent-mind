@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import { ExperienceService, MemoryService, openDatabase, safeError } from '@agentmind/core';
+import {
+  ExperienceService,
+  MemoryService,
+  openDatabase,
+  SkillProposalService,
+  SkillStore,
+  safeError,
+} from '@agentmind/core';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { readConfig } from './config.js';
 import { createServer } from './server.js';
@@ -23,7 +30,16 @@ async function main(): Promise<void> {
       config.sourceAgent,
       config.captureEnabled,
     );
-    const server = createServer(memory, experiences, config.captureEnabled);
+    const server = createServer(memory, experiences, config.captureEnabled, {
+      store: new SkillStore(db, config.project),
+      proposals: new SkillProposalService(
+        db,
+        config.project,
+        config.sourceAgent,
+        config.proposalEnabled,
+      ),
+      proposalEnabled: config.proposalEnabled,
+    });
     const shutdown = createShutdown({
       closeServer: () => server.close(),
       closeDatabase: () => {
