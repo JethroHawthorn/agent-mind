@@ -6,7 +6,7 @@ Phase 1 adds explicit structured experience capture to the Phase 0 memory server
 
 ## Install and check
 
-Phase 2 is being delivered one issue at a time. **P2-001 through P2-005 are implemented**: immutable skill versions, candidate authoring/discovery, validation, static evaluation, and local operator confirmation with approval/promotion/rollback audit. The default MCP server exposes 13 tools, including read-only `skill_pending`, `skill_review`, `skill_diff` and `skill_evaluation`; no privileged operator mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. P2-006–P2-008 remain pending. Work stops for independent P2-005 review.
+Phase 2 is being delivered one issue at a time. **P2-001 through P2-006 are implemented**: immutable skill versions, candidate authoring/discovery, validation, static evaluation, local operator confirmation with approval/promotion/rollback audit, and approved active skill distribution. The default MCP server exposes 13 tools, including read-only `skill_pending`, `skill_review`, `skill_diff` and `skill_evaluation`; no privileged operator or filesystem mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. P2-007–P2-008 remain pending. Work stops for independent P2-006 review.
 
 **Approval trust boundary:** this deployment shares an OS user, source code and SQLite access with the agent. Terminal confirmation is **not adversarially secure human authentication**: a same-user agent can automate a PTY or edit SQLite. P2-005 implements an explicit, artifact-bound local workflow and records that limitation in audit metadata. Strong human-only authorization requires a separately protected operator/broker and storage boundary; it is not configured here. See the [operator/security guide](docs/PHASE_2_OPERATOR.md) and [implementation report](docs/reviews/P2-005_IMPLEMENTATION.md).
 
@@ -65,7 +65,7 @@ node "$AGENTMIND_SERVER" --project-root "$PWD" --db "$AGENTMIND_DB" \
 
 The returned `project_id` must match. Keys are 16–128 letters, digits, dots, underscores or hyphens, starting with a letter or digit. They are namespace selectors, **not secrets or authentication tokens**. Choose one only for directories you intentionally authorize to share; never derive authorization from a tool argument or automatically merge repositories by their remotes. Startup still verifies the working directory against the configured root.
 
-An explicit key creates a separate namespace: it does not automatically reassign existing path-scoped records. Those records remain accessible by omitting the key at their original root. Configure a key before capturing memories that should survive directory moves. Schema version 2 introduced separate namespaces at the same directory; version 3 added experience tables; version 4 rebuilt the experience FTS index with indexed project terms; version 5 adds the skill domain tables and integrity guards; version 6 adds scoped skill metadata FTS5 discovery; version 7 adds append-only operator confirmation provenance. Existing IDs, content, approvals and review history are preserved. The same boundary covers experiences, local reviews and future skill operations.
+An explicit key creates a separate namespace: it does not automatically reassign existing path-scoped records. Those records remain accessible by omitting the key at their original root. Configure a key before capturing memories that should survive directory moves. Schema version 2 introduced separate namespaces at the same directory; version 3 added experience tables; version 4 rebuilt the experience FTS index with indexed project terms; version 5 adds the skill domain tables and integrity guards; version 6 adds scoped skill metadata FTS5 discovery; version 7 adds append-only operator confirmation provenance; version 8 adds registry identity, installation records, recovery intents and distribution audit events. Existing IDs, content, approvals and review history are preserved. The same boundary covers experiences, local reviews and skill operations.
 
 ## Connect Codex CLI
 
@@ -309,7 +309,7 @@ node "$AGENTMIND_REPO/packages/mcp-server/dist/skill-evaluate.js" \
 
 Requesting `--mode behavioral` with a fresh current state revision records an `execution.behavioral: NOT_VERIFIED` check. No code is run and capabilities explicitly report `execution_supported: false`, `process_isolation_supported: false` and `task_success: NOT_VERIFIED`. Any definite static failure still makes the overall result FAIL. Neither mode changes candidate approval or the active pointer. Future operator review must inspect the scope and checks rather than equate PASS with verified knowledge.
 
-The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The native `--skills` gate continues to report NOT VERIFIED because publication, usage and native-session verification in P2-006–P2-008 are pending. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md).
+The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The native `--skills` gate continues to report NOT VERIFIED: P2-006 provides publication, while usage tracking and the full learning acceptance flow remain future work. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md).
 
 ### Evaluation headings and blocked updates
 
@@ -356,7 +356,49 @@ To restore a previously active, still-approved exact version:
 node "$AGENTMIND_OPERATOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" --rollback "$SKILL_PREVIOUS_VERSION_ID" --reason "Explicit restoration of the prior approved registry version."
 ```
 
-Rollback also requires local confirmation, valid current-policy evidence, current source approvals and matching P2-005 approval provenance. It may restore a historical evaluation baseline, but never waive missing/failed evidence or resurrect rejected content. Repeated confirmed approval/promotion/rollback can return `already_approved`/`already_active` without a duplicate transition. Stale concurrent requests require fresh inspection and confirmation. Database failure rolls back history, audit and pointer together; previous approved versions remain intact. Each command changes the registry only: **installed CLI copies cannot be synchronized until P2-006 exists**, and this issue installs nothing.
+Rollback also requires local confirmation, valid current-policy evidence, current source approvals and matching P2-005 approval provenance. It may restore a historical evaluation baseline, but never waive missing/failed evidence or resurrect rejected content. Repeated confirmed approval/promotion/rollback can return `already_approved`/`already_active` without a duplicate transition. Stale concurrent requests require fresh inspection and confirmation. Database failure rolls back history, audit and pointer together; previous approved versions remain intact. Each operator command changes the registry only. Use the separate P2-006 synchronization workflow below to update installed CLI copies.
+
+## Approved skill distribution (P2-006)
+
+The registry remains the source of truth. Distribution selects one skill identity, its current approved active version, an explicit target and a destination scope. It publishes the exact `SKILL.md` and approved Markdown supporting files. Candidates, inactive versions and versions without current evaluation/approval provenance cannot be selected for installation. No scripts run during distribution.
+
+Project destinations are `.agents/skills/<name>` for Codex and `.claude/skills/<name>` for Claude. User destinations are the same paths under your home directory. **User scope deliberately makes the skill available outside its source project**; registry access remains project-scoped. Official discovery paths and their limitations are linked in the [distribution guide](docs/PHASE_2_DISTRIBUTION.md).
+
+After evaluating, approving and promoting a version through the workflows above, run from `$PROJECT`:
+
+```sh
+SKILL_ID="paste-skill-identity-uuid" # identity, not version UUID
+DISTRIBUTOR="$AGENTMIND_REPO/packages/mcp-server/dist/skill-distribute.js"
+
+# Inspect; these commands do not publish files or migrate the database.
+node "$DISTRIBUTOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" \
+  --skill-id "$SKILL_ID" --target all --scope project --sync --dry-run
+node "$DISTRIBUTOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" \
+  --skill-id "$SKILL_ID" --target all --scope project --status
+
+# In your terminal, review the exact files, diff, destination and digest,
+# then enter the artifact-bound CONFIRM challenge shown by the command.
+node "$DISTRIBUTOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" \
+  --skill-id "$SKILL_ID" --target all --scope project --sync
+
+# Observe integrity and record verification; this never repairs files.
+node "$DISTRIBUTOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" \
+  --skill-id "$SKILL_ID" --target all --scope project --verify
+
+# Explicit uninstall, using the same terminal confirmation mechanism.
+node "$DISTRIBUTOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" \
+  --skill-id "$SKILL_ID" --target all --scope project --remove
+```
+
+`--target codex` or `--target claude` selects just one adapter. `--scope user` selects your canonical home; optional trusted CLI `--home-root /absolute/existing/test-home` supports isolated testing. Supply the same `--project-key` used by the registry when applicable. Initialize schema 8 with the existing `--health` command before using read-only plan/status/dry-run against an older database. There is no `--yes`, `--force`, arbitrary destination/version or MCP installation endpoint.
+
+Plans report `INSTALL`, `UPDATE`, `REMOVE`, `SKIP`, `CONFLICT` or `REPAIR`. Ownership requires both the database record and matching manifest, bytes, inventory and directory identity. User-owned, modified, substituted or ambiguous content yields `CONFLICT` and is preserved. Missing managed copies can be repaired after confirmation. Interrupted operations require confirmed recovery, then a fresh plan and confirmation for convergence. Unknown private work artifacts are retained for operator inspection. SQLite and filesystem replacement are **recoverable, not one atomic transaction**. A batch can finish one target before another fails.
+
+After registry rollback, repeat dry-run, sync and verify to converge both copies. A registry without an active version produces an explicit removal plan for existing managed copies; inspect it carefully during activation gaps. Same-name copies in another scope can shadow a skill and are conservatively checked. See the guide for conflict resolution and recovery details.
+
+Start fresh sessions in the isolated test project: invoke `$your-skill-name` in Codex and `/your-skill-name` in Claude. Ask each to read a harmless supporting-file marker absent from your prompt, then check it against the approved version. Repeat after an approved update and rollback. The [manual acceptance procedure](docs/PHASE_2_DISTRIBUTION.md#manual-cross-cli-verification) includes exact commands.
+
+**Verification:** automated filesystem, security, CLI and regression tests passed; an isolated terminal workflow installed, updated and rolled back both sets of files. Installed Codex 0.163.0 and Claude Code 2.1.310 were attempted, but native discovery/use is **NOT VERIFIED** in this environment. Codex could not initialize its local state database under current OS permissions (exit 1); the corrected Claude invocation timed out (ETIMEDOUT, child exit 143). This is not evidence that either application consumed the skill. See the [P2-006 implementation report](docs/reviews/P2-006_IMPLEMENTATION.md).
 
 Review fields include exact snapshots, latest evaluation, current approval provenance, structured file changes, and up to 100 recent operator events with a truncation flag. Read-only MCP review uses `{ "version_id": "..." }`; pending supports bounded `limit`/`offset`. All content remains untrusted. Approval session IDs/digests are audit references, not authentication secrets or proof of human presence.
 

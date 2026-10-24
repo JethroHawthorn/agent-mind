@@ -96,10 +96,12 @@ it('migrates populated v6 transactionally, preserving existing versions and eval
   const version = f.version(id);
   const evaluation = f.evaluation(version);
   const before = f.store.getVersion(version);
-  f.db.exec('DROP TABLE skill_operator_events; PRAGMA user_version=6');
+  f.db.exec(
+    'DROP TABLE skill_distribution_events; DROP TABLE skill_distribution_intents; DROP TABLE skill_installations; DROP TABLE skill_registry_identity; DROP TABLE skill_operator_events; PRAGMA user_version=6',
+  );
   migrate(f.db);
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(7);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(8);
   expect(f.store.getVersion(version)).toEqual(before);
   expect(f.db.prepare('SELECT id FROM skill_evaluations WHERE id=?').get(evaluation)).toEqual({
     id: evaluation,
@@ -115,7 +117,9 @@ it('migrates populated v6 transactionally, preserving existing versions and eval
 });
 it('rolls migration v7 back after partial DDL and allows a safe retry', () => {
   const f = fixture();
-  f.db.exec('DROP TABLE skill_operator_events; PRAGMA user_version=6');
+  f.db.exec(
+    'DROP TABLE skill_distribution_events; DROP TABLE skill_distribution_intents; DROP TABLE skill_installations; DROP TABLE skill_registry_identity; DROP TABLE skill_operator_events; PRAGMA user_version=6',
+  );
   const original = f.db.exec.bind(f.db);
   const fault = vi.spyOn(f.db, 'exec').mockImplementation((sql) => {
     if (sql.includes('PRAGMA user_version = 7')) {
@@ -132,7 +136,7 @@ it('rolls migration v7 back after partial DDL and allows a safe retry', () => {
     f.db.prepare("SELECT name FROM sqlite_master WHERE name='skill_operator_events'").get(),
   ).toBeUndefined();
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(7);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(8);
 });
 it('rejects source revocation after a passing evaluation before approval', () => {
   const f = fixture();

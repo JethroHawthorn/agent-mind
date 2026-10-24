@@ -92,7 +92,7 @@ export class SkillReviewService {
         operator_events_truncated: audit.length > 100,
         approval_event: approvalEvent,
         latest_version: latest.version,
-        diff: diffFiles(active?.version.files ?? [], snapshot.version.files),
+        diff: diffSkillFiles(active?.version.files ?? [], snapshot.version.files),
         warning: OPERATOR_WARNING,
       };
     })();
@@ -118,7 +118,7 @@ export class SkillReviewService {
     };
   }
 }
-function diffFiles(
+export function diffSkillFiles(
   before: { path: string; content: string }[],
   after: { path: string; content: string }[],
 ) {

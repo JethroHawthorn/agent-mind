@@ -8,6 +8,9 @@ export { confirmOperatorReview, type OperatorGrant } from './operator-confirmati
 export * from './privacy.js';
 export * from './project.js';
 export * from './schemas.js';
+export * from './skill-distribution.js';
+export * from './skill-distribution-model.js';
+export * from './skill-distribution-targets.js';
 export * from './skill-evaluation.js';
 export * from './skill-evaluation-engine.js';
 export * from './skill-model.js';

@@ -4,11 +4,12 @@ import Database from 'better-sqlite3';
 import { AgentMindError } from './errors.js';
 import { migrateExperiences } from './experience-migration.js';
 import { migrateExperienceScopeIndex } from './experience-scope-migration.js';
+import { migrateSkillDistribution } from './skill-distribution-migration.js';
 import { migrateSkills } from './skill-migration.js';
 import { migrateSkillOperator } from './skill-operator-migration.js';
 import { migrateSkillDiscovery } from './skill-search-migration.js';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export function migrate(db: Database.Database): void {
   if (db.inTransaction)
@@ -76,6 +77,7 @@ export function migrate(db: Database.Database): void {
       if (version < 5) migrateSkills(db);
       if (version < 6) migrateSkillDiscovery(db);
       if (version < 7) migrateSkillOperator(db);
+      if (version < 8) migrateSkillDistribution(db);
       const violations = db.pragma('foreign_key_check') as unknown[];
       if (violations.length) {
         throw new AgentMindError(
@@ -130,6 +132,7 @@ export function openDatabase(path: string): Database.Database {
     db.prepare('SELECT rowid FROM experiences_fts LIMIT 0').all();
     db.prepare('SELECT rowid FROM skills_fts LIMIT 0').all();
     db.prepare('SELECT id FROM skill_operator_events LIMIT 0').all();
+    db.prepare('SELECT id FROM skill_installations LIMIT 0').all();
     return db;
   } catch (error) {
     db?.close();
@@ -137,6 +140,29 @@ export function openDatabase(path: string): Database.Database {
     throw new AgentMindError(
       'DATABASE_UNAVAILABLE',
       'Cannot initialize SQLite with FTS5. Check the database path and driver installation.',
+    );
+  }
+}
+
+/** Plan/status connections refuse missing/old registries and never run migrations or writes. */
+export function openDatabaseReadOnly(path: string): Database.Database {
+  let db: Database.Database | undefined;
+  try {
+    db = new Database(path, { readonly: true, fileMustExist: true, timeout: 5000 });
+    db.pragma('query_only = ON');
+    db.pragma('foreign_keys = ON');
+    if (db.pragma('user_version', { simple: true }) !== SCHEMA_VERSION)
+      throw new AgentMindError(
+        'MIGRATION_REQUIRED',
+        'Initialize or migrate this registry with the trusted server health command before read-only planning.',
+      );
+    return db;
+  } catch (error) {
+    db?.close();
+    if (error instanceof AgentMindError) throw error;
+    throw new AgentMindError(
+      'DATABASE_UNAVAILABLE',
+      'Cannot open the existing registry for read-only planning.',
     );
   }
 }

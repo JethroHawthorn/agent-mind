@@ -243,11 +243,11 @@ describe('scoped skill discovery', () => {
     const first = f.proposals.propose(proposal(f.approvedSource.id));
     const before = f.store.getVersion(first.version.id);
     f.db.exec(
-      'DROP TABLE IF EXISTS skill_operator_events; DROP TRIGGER skills_fts_insert; DROP TRIGGER skills_fts_delete; DROP TRIGGER skills_fts_update; DROP TABLE skills_fts; PRAGMA user_version = 5',
+      'DROP TABLE IF EXISTS skill_distribution_events; DROP TABLE IF EXISTS skill_distribution_intents; DROP TABLE IF EXISTS skill_installations; DROP TABLE IF EXISTS skill_registry_identity; DROP TABLE IF EXISTS skill_operator_events; DROP TRIGGER skills_fts_insert; DROP TRIGGER skills_fts_delete; DROP TRIGGER skills_fts_update; DROP TABLE skills_fts; PRAGMA user_version = 5',
     );
     migrate(f.db);
     migrate(f.db);
-    expect(f.db.pragma('user_version', { simple: true })).toBe(7);
+    expect(f.db.pragma('user_version', { simple: true })).toBe(8);
     expect(f.store.getVersion(first.version.id)).toEqual(before);
     expect(f.store.search('SQLite').skills[0]?.identity.id).toBe(first.identity.id);
   });
@@ -255,7 +255,7 @@ describe('scoped skill discovery', () => {
     const f = fixture();
     const saved = f.proposals.propose(proposal(f.approvedSource.id));
     f.db.exec(
-      'DROP TABLE IF EXISTS skill_operator_events; DROP TRIGGER skills_fts_insert; DROP TRIGGER skills_fts_delete; DROP TRIGGER skills_fts_update; DROP TABLE skills_fts; PRAGMA user_version = 5',
+      'DROP TABLE IF EXISTS skill_distribution_events; DROP TABLE IF EXISTS skill_distribution_intents; DROP TABLE IF EXISTS skill_installations; DROP TABLE IF EXISTS skill_registry_identity; DROP TABLE IF EXISTS skill_operator_events; DROP TRIGGER skills_fts_insert; DROP TRIGGER skills_fts_delete; DROP TRIGGER skills_fts_update; DROP TABLE skills_fts; PRAGMA user_version = 5',
     );
     const original = f.db.exec.bind(f.db);
     const fault = vi.spyOn(f.db, 'exec').mockImplementation((sql) => {
