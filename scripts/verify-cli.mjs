@@ -11,7 +11,17 @@ import { retrievedByClaude, savedByCodex } from './cli-evidence.mjs';
 let flags;
 try {
   flags = parseArgs({
-    options: { experiences: { type: 'boolean' }, skills: { type: 'boolean' } },
+    options: {
+      experiences: { type: 'boolean' },
+      skills: { type: 'boolean' },
+      prepare: { type: 'boolean' },
+      resume: { type: 'string' },
+      status: { type: 'boolean' },
+      probe: { type: 'boolean' },
+      cleanup: { type: 'string' },
+      help: { type: 'boolean' },
+      'native-timeout-seconds': { type: 'string' },
+    },
     strict: true,
     allowPositionals: false,
   }).values;
@@ -20,17 +30,30 @@ try {
   process.exit(1);
 }
 if (flags.skills) {
-  console.error(
-    'The native skill workflow gate is unavailable until evaluation, operator review, publication and usage prerequisites are implemented.',
-  );
-  console.log(
-    JSON.stringify({
-      ok: false,
-      cross_cli: 'NOT VERIFIED',
-      gate: 'skills',
-      reason: 'P2-008 prerequisites are pending',
-    }),
-  );
+  if (flags.experiences) {
+    console.error('Choose one verification gate.');
+    process.exit(1);
+  }
+  const verifier = fileURLToPath(new URL('./verify-skills.mjs', import.meta.url));
+  const code = await new Promise((resolve) => {
+    const child = spawn(process.execPath, [verifier, ...process.argv.slice(2)], {
+      stdio: 'inherit',
+    });
+    child.once('error', () => resolve(1));
+    child.once('close', (code) => resolve(code ?? 1));
+  });
+  process.exit(code);
+}
+if (
+  flags.prepare ||
+  flags.resume ||
+  flags.status ||
+  flags.probe ||
+  flags.cleanup ||
+  flags.help ||
+  flags['native-timeout-seconds'] !== undefined
+) {
+  console.error('Skill verification options require --skills.');
   process.exit(1);
 }
 const entry = fileURLToPath(new URL('../packages/mcp-server/dist/index.js', import.meta.url));

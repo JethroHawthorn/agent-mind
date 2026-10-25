@@ -122,6 +122,30 @@ export class SkillUsageService {
       },
     });
   }
+  /** Direct slash presence is deduplicated per installation/version/session, not per invocation. */
+  observeSlashPresence(report: unknown) {
+    const p = parse(usageReportSchema, report);
+    if (p.event_type !== 'discovered')
+      throw new AgentMindError(
+        'INVALID_USAGE_INPUT',
+        'Slash presence cannot assert invocation or outcomes.',
+      );
+    return this.#append(p, 'claude', {
+      category: 'native_hook',
+      method: 'claude-slash-presence-v1',
+      verification: 'observed',
+      details: {
+        observation: 'direct slash expansion observed at least once in this session',
+        deduplication:
+          'installation/version/session presence; repeat commands and retries collapse',
+        version_binding:
+          'managed installation at collection time; native loaded bytes not attested',
+        invocation_count_known: false,
+        completion_known: false,
+        origin_authenticated: false,
+      },
+    });
+  }
   #append(
     input: Omit<UsageReport, 'event_type'> & {
       event_type: UsageReport['event_type'] | 'installed';
@@ -427,6 +451,7 @@ export class SkillUsageService {
         failure: number;
         unknown: number;
         sessions: Set<string>;
+        slash_sessions: Set<string>;
       }
     >();
     for (const e of page.events) {
@@ -443,9 +468,12 @@ export class SkillUsageService {
         failure: 0,
         unknown: 0,
         sessions: new Set<string>(),
+        slash_sessions: new Set<string>(),
       };
       g.events++;
       if (e.session_id) g.sessions.add(e.session_id);
+      if (e.category === 'native_hook' && e.method === 'claude-slash-presence-v1' && e.session_id)
+        g.slash_sessions.add(e.session_id);
       if (e.event_type === 'invoked') {
         if (e.category === 'native_hook') g.observed_invocations++;
         else g.reported_invocations++;
@@ -460,9 +488,10 @@ export class SkillUsageService {
       groups.set(key, g);
     }
     return {
-      groups: [...groups.values()].slice(0, 100).map(({ sessions, ...g }) => ({
+      groups: [...groups.values()].slice(0, 100).map(({ sessions, slash_sessions, ...g }) => ({
         ...g,
         unique_sessions: sessions.size,
+        direct_slash_sessions: slash_sessions.size,
         potential_regression_signal:
           g.failure > 0
             ? 'reported failures require review; no causal conclusion'

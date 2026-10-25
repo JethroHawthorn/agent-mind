@@ -6,7 +6,7 @@ Phase 1 adds explicit structured experience capture to the Phase 0 memory server
 
 ## Install and check
 
-Phase 2 is being delivered one issue at a time. **P2-001 through P2-007 are implemented**, including approved active skill distribution and local usage/outcome telemetry. The default MCP server exposes 16 tools, including `skill_usage_record`, `skill_usage_query` and `skill_usage_summary`; no privileged approval, promotion or filesystem mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. Usage claims and observed installation/retrieval/invocation remain distinct from verified outcomes. P2-008 remains pending. Work stops for independent P2-007 review.
+Phase 2 is being delivered one issue at a time. **P2-001 through P2-007 are implemented**, including approved active skill distribution and local usage/outcome telemetry. The default MCP server exposes 16 tools; no privileged approval, promotion or filesystem mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. P2-008 adds offline E2E tests and a resumable native verifier. Its reviewed standard local upgrade procedure is [explicit-activation-gap-v1](docs/PHASE_2_UPGRADE_POLICY.md); continuous-active changed-version upgrades remain unsupported. **Full native acceptance remains NOT VERIFIED**, and protected operator deployment is not implemented. Autonomous Phase 3 is NO-GO. See [review remediation](docs/reviews/P2-008_REMEDIATION.md).
 
 **Approval trust boundary:** this deployment shares an OS user, source code and SQLite access with the agent. Terminal confirmation is **not adversarially secure human authentication**: a same-user agent can automate a PTY or edit SQLite. P2-005 implements an explicit, artifact-bound local workflow and records that limitation in audit metadata. Strong human-only authorization requires a separately protected operator/broker and storage boundary; it is not configured here. See the [operator/security guide](docs/PHASE_2_OPERATOR.md) and [implementation report](docs/reviews/P2-005_IMPLEMENTATION.md).
 
@@ -248,7 +248,7 @@ To propose a later immutable version, inspect the latest version and pass that n
 
 Start the server with `--disable-skill-proposals` to disable authoring while preserving retrieval and Phase 0/1 tools. Source agent and project scope come from trusted startup options; requests cannot set approval, actor, reviewer, source agent or project fields. Retrieval is untrusted reference data, never authorization to execute instructions.
 
-Current ingestion accepts `SKILL.md` and Markdown under `references/` only, with bounded YAML, safe paths and secret checks. P2-003 validation is enforced before proposal storage; P2-004 now provides a separate local static evaluator. Behavioral execution remains unavailable. No skill approval/promotion MCP tool is exposed. `node scripts/verify-cli.mjs --skills` exits nonzero with **NOT VERIFIED** until the evaluation, operator and publication prerequisites exist; it does not run the memory gate as a substitute.
+Current ingestion accepts `SKILL.md` and Markdown under `references/` only, with bounded YAML, safe paths and secret checks. P2-003 validation is enforced before proposal storage; P2-004 provides a separate local static evaluator. Behavioral execution remains unavailable. No skill approval/promotion MCP tool is exposed. `node scripts/verify-cli.mjs --skills` now delegates to the resumable native skills verifier, which requires real native evidence and pauses for operator actions. It never substitutes the memory gate or synthetic human approval.
 
 ## Skill validation (P2-003)
 
@@ -309,7 +309,7 @@ node "$AGENTMIND_REPO/packages/mcp-server/dist/skill-evaluate.js" \
 
 Requesting `--mode behavioral` with a fresh current state revision records an `execution.behavioral: NOT_VERIFIED` check. No code is run and capabilities explicitly report `execution_supported: false`, `process_isolation_supported: false` and `task_success: NOT_VERIFIED`. Any definite static failure still makes the overall result FAIL. Neither mode changes candidate approval or the active pointer. Future operator review must inspect the scope and checks rather than equate PASS with verified knowledge.
 
-The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The native `--skills` gate continues to report NOT VERIFIED: distribution and usage tracking exist, while the full P2-008 learning acceptance flow remains future work. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md).
+The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The P2-008 `--skills` gate is implemented, with native execution and continuous-active upgrade acceptance still NOT VERIFIED/blocked. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md) and [E2E acceptance](docs/reviews/PHASE_2_ACCEPTANCE.md).
 
 ### Evaluation headings and blocked updates
 
@@ -423,8 +423,43 @@ Add `--disable-telemetry` to every MCP launch to stop recording and automatic di
 
 Default retention is indefinite. Nothing is deleted automatically. Explicit `--prune --retention-days 30` requires the existing artifact-bound terminal confirmation and deletes at most 1000 received-time-expired events per batch. Minimal deduplication tombstones and cleanup audit remain to prevent replay resurrection. The collector runs no arbitrary commands or background daemon. Its fixed in-process Markdown check verifies only that static contract; overall success requires operator-confirmed complete task acceptance coverage. Same-user PTY/SQLite access retains the documented authorization limitation.
 
-See [event schemas, hook configuration, privacy/retention controls and manual native verification](docs/PHASE_2_USAGE.md) and the [P2-007 implementation report](docs/reviews/P2-007_IMPLEMENTATION.md). **Native usage telemetry remains NOT VERIFIED for both CLIs**: the isolated Codex attempt exited 1; Claude timed out without collected events. Automated MCP compatibility is verified separately. Stop here for independent P2-007 review.
+See [event schemas, hook configuration, privacy/retention controls and manual native verification](docs/PHASE_2_USAGE.md) and the [P2-007 implementation report](docs/reviews/P2-007_IMPLEMENTATION.md). **Native usage telemetry remains NOT VERIFIED for both CLIs**: the isolated Codex attempt exited 1; Claude timed out without collected events. Automated MCP compatibility is verified separately. Current P2-008 results follow below.
 
 Review fields include exact snapshots, latest evaluation, current approval provenance, structured file changes, and up to 100 recent operator events with a truncation flag. Read-only MCP review uses `{ "version_id": "..." }`; pending supports bounded `limit`/`offset`. All content remains untrusted. Approval session IDs/digests are audit references, not authentication secrets or proof of human presence.
 
+## Cross-agent E2E verification (P2-008)
+
+The reusable harness exercises the full local application chain using disposable Git projects, fake homes, real MCP server processes, SQLite, production operator grant validation and both distribution adapters. A known clamp bug fails its controlled TypeScript test before the fix and passes afterward. Automated test-only PTY confirmation is explicitly labeled and never counts as real human acceptance.
+
+```sh
+pnpm test:e2e     # 23 offline E2E/evidence tests; no accounts or API keys
+pnpm check        # 421 tests including all Phase 0–P2-007 regressions, plus quality gates
+
+# Opt-in native probe; uses normal native authentication and never auto-approves.
+pnpm verify:skills-cli --probe
+# Optional bounded startup allowance; does not authorize privileged actions:
+pnpm verify:skills-cli --probe --native-timeout-seconds 60
+
+# Prepare without model calls, then copy the printed project path.
+AGENTMIND_REPO="$PWD"
+node scripts/verify-skills.mjs --prepare
+LIVE_PROJECT="/absolute/generated/agentmind-e2e-directory"
+cd "$LIVE_PROJECT"
+node "$AGENTMIND_REPO/scripts/verify-skills.mjs" --resume "$LIVE_PROJECT"
+# At each human boundary, inspect and execute the printed operator commands yourself.
+# After reviewing/copying evidence:
+cd "$AGENTMIND_REPO"
+node scripts/verify-skills.mjs --cleanup "$LIVE_PROJECT"
+```
+
+The gate requires correlated native tool evidence, exact versions/digests and post-run reconciliation. Copied files or assistant prose do not prove native discovery/invocation. It stops before experience review, approval/promotion, distribution and rollback. Preparation can exit 0 while reporting NOT VERIFIED; pending human action exits 2; incomplete/failed native verification exits 1.
+
+**Current result:** all 421 tests pass. Our original restricted native probe failed before capture; the independent review separately observed successful native Codex capture in a permissive run, followed by a Claude timeout. These are distinct runs, not evidence that both clients completed the workflow. The earlier remediation's restricted rerun again failed Codex capture; Claude initialized but produced no tool calls/final result before the 60-second bound. A minimal no-MCP Claude request also timed out. Native probe results now include elapsed time and content-free progress counts; timeouts remain unsuccessful verification and are never converted to success. See the remediation report for exact outcomes.
+
+The changed-V2 test confirms the reviewed evaluator returns NOT_VERIFIED while V1 is active. The formal standard local lifecycle requires separate operator deactivation, fresh evaluation, approval/promotion and sync, with explicit V1 rollback if a later decision fails. Never synchronize the activation gap. This documented profile does not certify the original continuous-active requirement. Same-UID approval limitations remain unchanged; [the protected-operator architecture](docs/SECURITY_PRIVILEGE_SEPARATION.md) is a design, not a deployed security fix. **Full native acceptance remains unverified; autonomous Phase 3 is NO-GO.**
+
+See the [traceability map and reproducible procedure](docs/PHASE_2_E2E.md), [P2-008 implementation report](docs/reviews/P2-008_IMPLEMENTATION.md) and [Phase 2 acceptance report](docs/reviews/PHASE_2_ACCEPTANCE.md).
+
 `pnpm check` includes real POSIX PTY tests using Python 3's standard library. Those tests automate confirmation to verify mechanics and explicitly demonstrate the same-user bypass; their passing status is **not a human-authentication security claim**. Runtime requires only Node.js; no new model subscription or API key is used. Native Codex/Claude skill execution remains NOT VERIFIED.
+
+Claude direct `/skill` usage can optionally be observed through `UserPromptExpansion`; see the [usage guide](docs/PHASE_2_USAGE.md). Its `direct_slash_sessions` measure records session presence separately from tool invocation counts. Native delivery and consumed bytes remain unverified until observed in a real session. See [final review remediation](docs/reviews/PHASE_2_FINAL_REMEDIATION.md) for finding dispositions and remaining release blockers.

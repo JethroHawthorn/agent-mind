@@ -294,6 +294,122 @@ it('validates the documented Claude Skill tool payload, discards private extras 
     'intact managed',
   );
 });
+function slashFixture() {
+  const f = fixture();
+  f.service.commit(f.request, {});
+  const installation = f.db
+    .prepare("SELECT id FROM skill_installations WHERE target='claude'")
+    .get() as { id: string };
+  const payload = {
+    hook_event_name: 'UserPromptExpansion',
+    expansion_type: 'slash_command',
+    session_id: 'native-slash-session',
+    cwd: f.root,
+    command_name: f.candidate.identity.name,
+    command_source: 'project',
+    command_args: 'private arguments api_key=do-not-store-this-value',
+    prompt: 'private original prompt',
+    transcript_path: '/never/read/transcript',
+  };
+  const collect = (extra = {}, enabled = true) =>
+    collectClaudeUsage(f.db, f.scope, installation.id, { ...payload, ...extra }, enabled);
+  return { ...f, installation, payload, collect };
+}
+it('records direct slash session presence without fabricating invocations, execution or success', () => {
+  const f = slashFixture();
+  expect(f.collect()).toMatchObject({
+    stored: true,
+    event: {
+      event_type: 'discovered',
+      category: 'native_hook',
+      method: 'claude-slash-presence-v1',
+      verification: 'observed',
+      source_cli: 'claude',
+      version_id: f.candidate.version.id,
+      details: {
+        invocation_count_known: false,
+        completion_known: false,
+        origin_authenticated: false,
+      },
+    },
+  });
+  expect(f.collect()).toMatchObject({ stored: false, duplicate: true });
+  // New arguments or repeat user commands are deliberately the same session-presence fact.
+  expect(f.collect({ command_args: 'changed', prompt: '/changed' })).toMatchObject({
+    duplicate: true,
+  });
+  expect(f.collect({ session_id: 'second-session' })).toMatchObject({ stored: true });
+  expect(f.usage.summary().groups[0]).toMatchObject({
+    direct_slash_sessions: 2,
+    observed_invocations: 0,
+    reported_invocations: 0,
+    success: 0,
+    failure: 0,
+    unknown: 0,
+    unique_sessions: 2,
+  });
+  expect(JSON.stringify(f.usage.query())).not.toMatch(
+    /private|do-not-store|never\/read|native-slash-session|second-session/,
+  );
+  expect(usageCapabilities.claude.direct_slash_command).toBe(true);
+  expect(usageCapabilities.claude.direct_slash_invocation_counts).toBe(false);
+});
+it('rejects unsupported slash payloads and skips unrelated commands without storing private data', () => {
+  const f = slashFixture();
+  for (const extra of [
+    { expansion_type: 'mcp_prompt' },
+    { command_name: '../escape' },
+    { session_id: '' },
+    { session_id: 'a'.repeat(201) },
+    { hook_event_name: 'Stop' },
+  ])
+    expect(f.collect(extra)).toMatchObject({ unsupported: true });
+  expect(f.collect({ command_name: 'unrelated-command' })).toMatchObject({ unrelated: true });
+  expect(() => f.collect({ prompt: 'a'.repeat(65537) })).toThrow('byte limit');
+  expect(f.usage.query().events).toHaveLength(0);
+});
+it('enforces scoped intact installations and disabled mode for slash presence', () => {
+  const f = slashFixture();
+  expect(f.collect({}, false)).toMatchObject({ stored: false, disabled: true });
+  expect(() => f.collect({ cwd: fixture().root })).toThrow();
+  expect(() =>
+    collectClaudeUsage(f.db, f.otherScope, f.installation.id, {
+      ...f.payload,
+      cwd: f.otherScope.root,
+    }),
+  ).toThrow('intact managed');
+  writeFileSync(
+    join(f.root, '.claude', 'skills', f.candidate.identity.name, 'SKILL.md'),
+    'tampered',
+  );
+  expect(() => f.collect()).toThrow('intact managed');
+  expect(f.usage.query().events).toHaveLength(0);
+});
+it('retains slash presence deduplication across database reopen', () => {
+  const f = slashFixture();
+  f.collect();
+  const db = openUsageDatabase(f.path);
+  try {
+    expect(collectClaudeUsage(db, f.scope, f.installation.id, f.payload)).toMatchObject({
+      duplicate: true,
+    });
+    expect(new SkillUsageService(db, f.scope, 'claude').summary().groups[0]).toMatchObject({
+      direct_slash_sessions: 1,
+    });
+  } finally {
+    db.close();
+  }
+});
+it('does not let slash instrumentation assert invocation or a task outcome', () => {
+  const f = fixture();
+  for (const event_type of ['invoked', 'executed', 'task_succeeded'])
+    expect(() => f.usage.observeSlashPresence(report(f, { event_type }))).toThrow('cannot assert');
+  f.usage.record(report(f, { event_type: 'discovered' }));
+  expect(f.usage.summary().groups[0]).toMatchObject({
+    direct_slash_sessions: 0,
+    observed_invocations: 0,
+  });
+});
 it('retains events indefinitely until explicitly pruned and keeps tombstones to prevent replay resurrection', () => {
   const f = fixture();
   const p = report(f);

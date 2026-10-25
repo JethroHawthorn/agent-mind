@@ -188,6 +188,24 @@ it('handles hook success, malformed payloads, oversized input and lock failures 
   expect(good.status).toBe(0);
   expect(good.stdout).toBe('');
   expect(good.stderr).toContain('USAGE_HOOK_STORED');
+  const slash = JSON.stringify({
+    hook_event_name: 'UserPromptExpansion',
+    expansion_type: 'slash_command',
+    session_id: 'slash-session',
+    cwd: f.root,
+    command_name: f.candidate.identity.name,
+    prompt: 'private slash prompt',
+    command_args: 'private slash args',
+    transcript_path: '/never/open/slash',
+  });
+  expect(run(slash)).toMatchObject({ status: 0, stdout: '' });
+  expect(run(slash).stderr).toContain('USAGE_HOOK_SKIPPED');
+  expect(f.usage.summary().groups[0]).toMatchObject({
+    direct_slash_sessions: 1,
+    observed_invocations: 1,
+  });
+  expect(JSON.stringify(f.usage.query())).not.toMatch(/private slash|never\/open|slash-session/);
+
   expect(run('not JSON')).toMatchObject({ status: 0, stdout: '' });
   expect(run('a'.repeat(65537)).stderr).toContain('NOT_STORED');
   expect(run(JSON.stringify({ ...payload, hook_event_name: 'Stop' })).stderr).toContain('SKIPPED');

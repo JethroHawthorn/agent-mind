@@ -18,22 +18,32 @@ export const usageCapabilities = Object.freeze({
   },
   claude: {
     adapter: 'claude-skill-tool-v1',
-    events: ['PreToolUse', 'PostToolUse'],
+    events: ['PreToolUse', 'PostToolUse', 'UserPromptExpansion'],
     tool: 'Skill',
-    direct_slash_command: false,
+    direct_slash_command: true,
+    direct_slash_invocation_counts: false,
     reason:
-      'Direct slash expansion bypasses Skill tool hooks. Expansion payload lacks a stable invocation ID; it is not deduplicated into invented invocations.',
+      'Direct slash expansion records session/skill presence only. No stable native expansion ID is available; repeated expansions are not counted as unique invocations.',
   },
 });
 // Deliberately strips extra fields, including transcript_path, prompt, args, responses and permission flags.
-const claudeHookSchema = z.object({
-  hook_event_name: z.enum(['PreToolUse', 'PostToolUse']),
-  session_id: z.string().min(1).max(200),
-  cwd: z.string().min(1).max(4096),
-  tool_use_id: z.string().min(1).max(200),
-  tool_name: z.literal('Skill'),
-  tool_input: z.object({ skill: skillNameSchema }),
-});
+const claudeHookSchema = z.union([
+  z.object({
+    hook_event_name: z.enum(['PreToolUse', 'PostToolUse']),
+    session_id: z.string().min(1).max(200),
+    cwd: z.string().min(1).max(4096),
+    tool_use_id: z.string().min(1).max(200),
+    tool_name: z.literal('Skill'),
+    tool_input: z.object({ skill: skillNameSchema }),
+  }),
+  z.object({
+    hook_event_name: z.literal('UserPromptExpansion'),
+    session_id: z.string().min(1).max(200),
+    cwd: z.string().min(1).max(4096),
+    expansion_type: z.literal('slash_command'),
+    command_name: skillNameSchema,
+  }),
+]);
 export function collectClaudeUsage(
   db: Database.Database,
   scope: ProjectScope,
@@ -60,11 +70,36 @@ export function collectClaudeUsage(
       'Hook does not match an intact managed Claude installation.',
     );
   const skill = new SkillStore(db, scope).getIdentity(row.skill_id);
-  if (skill.name !== p.data.tool_input.skill) return { stored: false, unrelated: true };
-  return new SkillUsageService(db, scope, 'claude', enabled).observeHook({
+  const data = p.data;
+  const name =
+    data.hook_event_name === 'UserPromptExpansion' ? data.command_name : data.tool_input.skill;
+  if (skill.name !== name) return { stored: false, unrelated: true };
+  const service = new SkillUsageService(db, scope, 'claude', enabled);
+  if (data.hook_event_name === 'UserPromptExpansion') {
+    // The native payload has no stable expansion ID. Observe presence, never invent an invocation.
+    return service.observeSlashPresence({
+      schema_version: 1,
+      event_id: usageObservationId(
+        JSON.stringify([
+          'claude-slash-presence-v1',
+          scope.id,
+          id.data,
+          row.version_id,
+          p.data.session_id,
+          name,
+        ]),
+      ),
+      version_id: row.version_id,
+      artifact_digest: row.installed_digest,
+      installation_id: id.data,
+      session_id: p.data.session_id,
+      event_type: 'discovered',
+    });
+  }
+  return service.observeHook({
     schema_version: 1,
     event_id: usageObservationId(
-      `claude:${scope.id}:${id.data}:${p.data.session_id}:${p.data.tool_use_id}:${p.data.hook_event_name}`,
+      `claude:${scope.id}:${id.data}:${p.data.session_id}:${data.tool_use_id}:${p.data.hook_event_name}`,
     ),
     version_id: row.version_id,
     artifact_digest: row.installed_digest,

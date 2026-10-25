@@ -169,17 +169,21 @@ it('can disable proposal mutations while keeping skill discovery and all Phase 0
 });
 
 it('does not mistake an unavailable native skill workflow for a successful memory gate', () => {
-  const result = spawnSync(process.execPath, [resolve('scripts/verify-cli.mjs'), '--skills'], {
-    encoding: 'utf8',
-    timeout: 3000,
-  });
+  const result = spawnSync(
+    process.execPath,
+    [resolve('scripts/verify-cli.mjs'), '--skills', '--status'],
+    {
+      encoding: 'utf8',
+      timeout: 3000,
+    },
+  );
   expect(result.status).toBe(1);
   expect(JSON.parse(result.stdout)).toMatchObject({
     ok: false,
     gate: 'skills',
     cross_cli: 'NOT VERIFIED',
   });
-  expect(result.stderr).toContain('prerequisites');
+  expect(JSON.parse(result.stdout).reason).toContain('no native workflow evidence');
 });
 
 it('validates a persisted snapshot through MCP without evaluating or mutating lifecycle state', async () => {
