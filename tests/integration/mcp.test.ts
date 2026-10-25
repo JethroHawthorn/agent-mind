@@ -139,6 +139,9 @@ describe('real stdio MCP processes', () => {
       'skill_propose',
       'skill_review',
       'skill_search',
+      'skill_usage_query',
+      'skill_usage_record',
+      'skill_usage_summary',
       'skill_validate',
     ]);
     await first.client.ping();

@@ -8,8 +8,9 @@ import { migrateSkillDistribution } from './skill-distribution-migration.js';
 import { migrateSkills } from './skill-migration.js';
 import { migrateSkillOperator } from './skill-operator-migration.js';
 import { migrateSkillDiscovery } from './skill-search-migration.js';
+import { migrateSkillUsage } from './skill-usage-migration.js';
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export function migrate(db: Database.Database): void {
   if (db.inTransaction)
@@ -78,6 +79,7 @@ export function migrate(db: Database.Database): void {
       if (version < 6) migrateSkillDiscovery(db);
       if (version < 7) migrateSkillOperator(db);
       if (version < 8) migrateSkillDistribution(db);
+      if (version < 9) migrateSkillUsage(db);
       const violations = db.pragma('foreign_key_check') as unknown[];
       if (violations.length) {
         throw new AgentMindError(
@@ -133,6 +135,7 @@ export function openDatabase(path: string): Database.Database {
     db.prepare('SELECT rowid FROM skills_fts LIMIT 0').all();
     db.prepare('SELECT id FROM skill_operator_events LIMIT 0').all();
     db.prepare('SELECT id FROM skill_installations LIMIT 0').all();
+    db.prepare('SELECT event_id FROM skill_usage_events LIMIT 0').all();
     return db;
   } catch (error) {
     db?.close();
@@ -164,5 +167,22 @@ export function openDatabaseReadOnly(path: string): Database.Database {
       'DATABASE_UNAVAILABLE',
       'Cannot open the existing registry for read-only planning.',
     );
+  }
+}
+
+/** Hooks never initialize/migrate a registry or wait on its normal five-second busy timeout. */
+export function openUsageDatabase(path: string): Database.Database {
+  const db = new Database(path, { fileMustExist: true, timeout: 150 });
+  try {
+    db.pragma('foreign_keys=ON');
+    if (db.pragma('user_version', { simple: true }) !== SCHEMA_VERSION)
+      throw new AgentMindError(
+        'MIGRATION_REQUIRED',
+        'Initialize telemetry using the normal health workflow first.',
+      );
+    return db;
+  } catch (e) {
+    db.close();
+    throw e;
   }
 }

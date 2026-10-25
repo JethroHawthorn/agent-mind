@@ -6,6 +6,7 @@ import {
   SkillProposalService,
   SkillReviewService,
   SkillStore,
+  SkillUsageService,
   safeError,
 } from '@agentmind/core';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -41,6 +42,7 @@ async function main(): Promise<void> {
       ),
       proposalEnabled: config.proposalEnabled,
       review: new SkillReviewService(db, config.project),
+      usage: new SkillUsageService(db, config.project, config.sourceAgent, config.telemetryEnabled),
     });
     const shutdown = createShutdown({
       closeServer: () => server.close(),

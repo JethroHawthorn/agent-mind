@@ -6,7 +6,7 @@ Phase 1 adds explicit structured experience capture to the Phase 0 memory server
 
 ## Install and check
 
-Phase 2 is being delivered one issue at a time. **P2-001 through P2-006 are implemented**: immutable skill versions, candidate authoring/discovery, validation, static evaluation, local operator confirmation with approval/promotion/rollback audit, and approved active skill distribution. The default MCP server exposes 13 tools, including read-only `skill_pending`, `skill_review`, `skill_diff` and `skill_evaluation`; no privileged operator or filesystem mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. P2-007–P2-008 remain pending. Work stops for independent P2-006 review.
+Phase 2 is being delivered one issue at a time. **P2-001 through P2-007 are implemented**, including approved active skill distribution and local usage/outcome telemetry. The default MCP server exposes 16 tools, including `skill_usage_record`, `skill_usage_query` and `skill_usage_summary`; no privileged approval, promotion or filesystem mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. Usage claims and observed installation/retrieval/invocation remain distinct from verified outcomes. P2-008 remains pending. Work stops for independent P2-007 review.
 
 **Approval trust boundary:** this deployment shares an OS user, source code and SQLite access with the agent. Terminal confirmation is **not adversarially secure human authentication**: a same-user agent can automate a PTY or edit SQLite. P2-005 implements an explicit, artifact-bound local workflow and records that limitation in audit metadata. Strong human-only authorization requires a separately protected operator/broker and storage boundary; it is not configured here. See the [operator/security guide](docs/PHASE_2_OPERATOR.md) and [implementation report](docs/reviews/P2-005_IMPLEMENTATION.md).
 
@@ -65,7 +65,7 @@ node "$AGENTMIND_SERVER" --project-root "$PWD" --db "$AGENTMIND_DB" \
 
 The returned `project_id` must match. Keys are 16–128 letters, digits, dots, underscores or hyphens, starting with a letter or digit. They are namespace selectors, **not secrets or authentication tokens**. Choose one only for directories you intentionally authorize to share; never derive authorization from a tool argument or automatically merge repositories by their remotes. Startup still verifies the working directory against the configured root.
 
-An explicit key creates a separate namespace: it does not automatically reassign existing path-scoped records. Those records remain accessible by omitting the key at their original root. Configure a key before capturing memories that should survive directory moves. Schema version 2 introduced separate namespaces at the same directory; version 3 added experience tables; version 4 rebuilt the experience FTS index with indexed project terms; version 5 adds the skill domain tables and integrity guards; version 6 adds scoped skill metadata FTS5 discovery; version 7 adds append-only operator confirmation provenance; version 8 adds registry identity, installation records, recovery intents and distribution audit events. Existing IDs, content, approvals and review history are preserved. The same boundary covers experiences, local reviews and skill operations.
+An explicit key creates a separate namespace: it does not automatically reassign existing path-scoped records. Those records remain accessible by omitting the key at their original root. Configure a key before capturing memories that should survive directory moves. Schema versions 2–8 introduced keyed namespaces, experiences/FTS5, immutable skills, discovery, operator audit and distribution records. Version 9 adds usage events, retry tombstones and retention audit. Existing IDs, content, approvals and review history are preserved. The same boundary covers experiences, local reviews and skill operations.
 
 ## Connect Codex CLI
 
@@ -197,7 +197,7 @@ Results are JSON encoded in MCP text content. Unknown fields are rejected. Searc
 - Trusted local launch configuration and OS access are the boundary. A local process that can change launch configuration or read the database can access it. This is not a sandbox or multi-user authorization system.
 - `source_agent` comes from trusted startup configuration, not a tool argument. It is a local provenance label, not cryptographic proof of client identity. All records remain explicitly `unverified`; saving does not certify correctness.
 - Only explicit summaries are saved. No files, transcripts, CLI credentials or environment secrets are collected. Phase 0 memory saves retain their secret-rejection behavior. Experiences redact recognized secrets before returning, hashing, indexing or saving any field, including evidence/provenance and review labels/reasons; recognizable role-prefixed and JSON-message transcripts are rejected. Redaction and transcript detection are best-effort: remove sensitive content before submitting. Evidence references are never fetched or executed. Rejection errors and logs do not echo submitted content.
-- New storage directories use mode 0700 and database files 0600 on POSIX; server umask is 0077 for sidecars. On Windows chmod is skipped. Filesystems returning EPERM, ENOTSUP, EOPNOTSUPP or ENOSYS for chmod produce a safe stderr warning and continue; OS ACLs/filesystem controls must protect access there. Other permission/I/O errors fail startup. Existing parent directory permissions remain under your control. Keep databases out of Git. No background telemetry or application network clients are implemented.
+- New storage directories use mode 0700 and database files 0600 on POSIX; server umask is 0077 for sidecars. On Windows chmod is skipped. Filesystems returning EPERM, ENOTSUP, EOPNOTSUPP or ENOSYS for chmod produce a safe stderr warning and continue; OS ACLs/filesystem controls must protect access there. Other permission/I/O errors fail startup. Existing parent directory permissions remain under your control. Keep databases out of Git. No permanent telemetry daemon or application network client is implemented.
 - SQLite uses WAL, a 5-second busy timeout, FULL synchronous commits, foreign keys, and transactional versioned migrations. Newer schema versions are refused. Concurrent processes may report a safe error if storage stays locked or unavailable.
 
 ## Verification status
@@ -309,7 +309,7 @@ node "$AGENTMIND_REPO/packages/mcp-server/dist/skill-evaluate.js" \
 
 Requesting `--mode behavioral` with a fresh current state revision records an `execution.behavioral: NOT_VERIFIED` check. No code is run and capabilities explicitly report `execution_supported: false`, `process_isolation_supported: false` and `task_success: NOT_VERIFIED`. Any definite static failure still makes the overall result FAIL. Neither mode changes candidate approval or the active pointer. Future operator review must inspect the scope and checks rather than equate PASS with verified knowledge.
 
-The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The native `--skills` gate continues to report NOT VERIFIED: P2-006 provides publication, while usage tracking and the full learning acceptance flow remain future work. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md).
+The offline integration suite verifies separate evaluator processes, restart/report persistence, MCP visibility of evaluation state, project isolation and competing evaluations. It does not verify native Codex/Claude skill execution. The native `--skills` gate continues to report NOT VERIFIED: distribution and usage tracking exist, while the full P2-008 learning acceptance flow remains future work. See [evaluation design and limitations](docs/PHASE_2_EVALUATION.md).
 
 ### Evaluation headings and blocked updates
 
@@ -390,7 +390,7 @@ node "$DISTRIBUTOR" --project-root "$PROJECT" --db "$AGENTMIND_DB" \
   --skill-id "$SKILL_ID" --target all --scope project --remove
 ```
 
-`--target codex` or `--target claude` selects just one adapter. `--scope user` selects your canonical home; optional trusted CLI `--home-root /absolute/existing/test-home` supports isolated testing. Supply the same `--project-key` used by the registry when applicable. Initialize schema 8 with the existing `--health` command before using read-only plan/status/dry-run against an older database. There is no `--yes`, `--force`, arbitrary destination/version or MCP installation endpoint.
+`--target codex` or `--target claude` selects just one adapter. `--scope user` selects your canonical home; optional trusted CLI `--home-root /absolute/existing/test-home` supports isolated testing. Supply the same `--project-key` used by the registry when applicable. Initialize the current schema with the existing `--health` command before using read-only plan/status/dry-run against an older database. There is no `--yes`, `--force`, arbitrary destination/version or MCP installation endpoint.
 
 Plans report `INSTALL`, `UPDATE`, `REMOVE`, `SKIP`, `CONFLICT` or `REPAIR`. Ownership requires both the database record and matching manifest, bytes, inventory and directory identity. User-owned, modified, substituted or ambiguous content yields `CONFLICT` and is preserved. Missing managed copies can be repaired after confirmation. Interrupted operations require confirmed recovery, then a fresh plan and confirmation for convergence. Unknown private work artifacts are retained for operator inspection. SQLite and filesystem replacement are **recoverable, not one atomic transaction**. A batch can finish one target before another fails.
 
@@ -399,6 +399,31 @@ After registry rollback, repeat dry-run, sync and verify to converge both copies
 Start fresh sessions in the isolated test project: invoke `$your-skill-name` in Codex and `/your-skill-name` in Claude. Ask each to read a harmless supporting-file marker absent from your prompt, then check it against the approved version. Repeat after an approved update and rollback. The [manual acceptance procedure](docs/PHASE_2_DISTRIBUTION.md#manual-cross-cli-verification) includes exact commands.
 
 **Verification:** automated filesystem, security, CLI and regression tests passed; an isolated terminal workflow installed, updated and rolled back both sets of files. Installed Codex 0.163.0 and Claude Code 2.1.310 were attempted, but native discovery/use is **NOT VERIFIED** in this environment. Codex could not initialize its local state database under current OS permissions (exit 1); the corrected Claude invocation timed out (ETIMEDOUT, child exit 143). This is not evidence that either application consumed the skill. See the [P2-006 implementation report](docs/reviews/P2-006_IMPLEMENTATION.md).
+
+## Skill usage and outcome telemetry (P2-007)
+
+Telemetry is local, project-scoped and enabled by default. `skill_usage_record` accepts bounded explicit reports tied to an exact operator-approved version/digest; **agent-reported successes remain unverified**. `skill_usage_query` and `skill_usage_summary` are read-only, bounded reports. They separate native observations from reported invocations and operator-confirmed from unverified outcomes. Counts describe associations, not evidence that a skill caused better performance. Missing failure reports never imply success.
+
+Approved `skill_get` content resolution records best-effort MCP discovery observations, without claiming native discovery/invocation. Installation observations are explicitly imported from existing P2-006 audit records, preserving the privileged distribution workflow. The optional Claude adapter observes only documented `Skill` tool requests/completions; direct `/skill` commands can bypass that path. Codex uses explicit MCP reporting; no dedicated native invocation hook is assumed.
+
+```sh
+USAGE="$AGENTMIND_REPO/packages/mcp-server/dist/skill-usage.js"
+node "$USAGE" --capabilities
+node "$USAGE" --project-root "$PROJECT" --db "$AGENTMIND_DB" --collect-installations
+node "$USAGE" --project-root "$PROJECT" --db "$AGENTMIND_DB" --query --limit 20
+node "$USAGE" --project-root "$PROJECT" --db "$AGENTMIND_DB" --summary --agent codex
+node "$USAGE" --project-root "$PROJECT" --db "$AGENTMIND_DB" --summary --agent claude
+
+# Separate explicit operator outcome confirmation; input comes from a reviewed JSON file.
+node "$USAGE" --project-root "$PROJECT" --db "$AGENTMIND_DB" \
+  --source-agent unknown --confirm-outcome /absolute/outcome.json
+```
+
+Add `--disable-telemetry` to every MCP launch to stop recording and automatic discovery while retaining historical query access. Standalone collectors/hook commands accept the same switch. No raw prompts, transcripts, hook arguments/results or credentials are stored. Recognized secrets in accepted summaries are redacted; session/task labels are hashed. These are best-effort privacy controls, not encryption or guaranteed secret detection.
+
+Default retention is indefinite. Nothing is deleted automatically. Explicit `--prune --retention-days 30` requires the existing artifact-bound terminal confirmation and deletes at most 1000 received-time-expired events per batch. Minimal deduplication tombstones and cleanup audit remain to prevent replay resurrection. The collector runs no arbitrary commands or background daemon. Its fixed in-process Markdown check verifies only that static contract; overall success requires operator-confirmed complete task acceptance coverage. Same-user PTY/SQLite access retains the documented authorization limitation.
+
+See [event schemas, hook configuration, privacy/retention controls and manual native verification](docs/PHASE_2_USAGE.md) and the [P2-007 implementation report](docs/reviews/P2-007_IMPLEMENTATION.md). **Native usage telemetry remains NOT VERIFIED for both CLIs**: the isolated Codex attempt exited 1; Claude timed out without collected events. Automated MCP compatibility is verified separately. Stop here for independent P2-007 review.
 
 Review fields include exact snapshots, latest evaluation, current approval provenance, structured file changes, and up to 100 recent operator events with a truncation flag. Read-only MCP review uses `{ "version_id": "..." }`; pending supports bounded `limit`/`offset`. All content remains untrusted. Approval session IDs/digests are audit references, not authentication secrets or proof of human presence.
 

@@ -322,7 +322,7 @@ it('opens planning connections read-only, refuses migration in dry-run, and roll
     read.close();
   }
   f.db.exec(
-    'DROP TABLE skill_distribution_events; DROP TABLE skill_distribution_intents; DROP TABLE skill_installations; DROP TABLE skill_registry_identity; PRAGMA user_version=7',
+    'DROP TABLE IF EXISTS skill_usage_cleanup; DROP TABLE IF EXISTS skill_usage_events; DROP TABLE IF EXISTS skill_usage_dedup; DROP TABLE skill_distribution_events; DROP TABLE skill_distribution_intents; DROP TABLE skill_installations; DROP TABLE skill_registry_identity; PRAGMA user_version=7',
   );
   expect(() => openDatabaseReadOnly(f.path)).toThrow('migrate');
   const old = f.store.getVersion(f.candidate.version.id);
@@ -339,7 +339,7 @@ it('opens planning connections read-only, refuses migration in dry-run, and roll
   expect(f.db.pragma('user_version', { simple: true })).toBe(7);
   expect(f.db.pragma('foreign_keys', { simple: true })).toBe(1);
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(8);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(9);
   expect(f.store.getVersion(f.candidate.version.id)).toEqual(old);
 });
 

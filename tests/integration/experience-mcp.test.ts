@@ -249,6 +249,9 @@ describe('experience MCP interoperability (SDK clients, not native agent session
       'skill_propose',
       'skill_review',
       'skill_search',
+      'skill_usage_query',
+      'skill_usage_record',
+      'skill_usage_summary',
       'skill_validate',
     ]);
     expect((await client.callTool({ name: 'experience_record', arguments: input })).isError).toBe(
