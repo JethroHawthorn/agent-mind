@@ -3,6 +3,7 @@ import {
   ExperienceService,
   MemoryService,
   openDatabase,
+  RecommendationService,
   SkillProposalService,
   SkillReviewService,
   SkillStore,
@@ -32,18 +33,29 @@ async function main(): Promise<void> {
       config.sourceAgent,
       config.captureEnabled,
     );
-    const server = createServer(memory, experiences, config.captureEnabled, {
-      store: new SkillStore(db, config.project),
-      proposals: new SkillProposalService(
-        db,
-        config.project,
-        config.sourceAgent,
-        config.proposalEnabled,
-      ),
-      proposalEnabled: config.proposalEnabled,
-      review: new SkillReviewService(db, config.project),
-      usage: new SkillUsageService(db, config.project, config.sourceAgent, config.telemetryEnabled),
-    });
+    const server = createServer(
+      memory,
+      experiences,
+      config.captureEnabled,
+      {
+        store: new SkillStore(db, config.project),
+        proposals: new SkillProposalService(
+          db,
+          config.project,
+          config.sourceAgent,
+          config.proposalEnabled,
+        ),
+        proposalEnabled: config.proposalEnabled,
+        review: new SkillReviewService(db, config.project),
+        usage: new SkillUsageService(
+          db,
+          config.project,
+          config.sourceAgent,
+          config.telemetryEnabled,
+        ),
+      },
+      config.curatorEnabled ? new RecommendationService(db, config.project) : undefined,
+    );
     const shutdown = createShutdown({
       closeServer: () => server.close(),
       closeDatabase: () => {

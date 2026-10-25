@@ -363,3 +363,22 @@ it('migrates broker v1 transactionally, invalidates outstanding legacy reviews a
     ),
   ).toMatchObject({ status: 'applied' });
 });
+
+it('keeps curator analysis advisory and scoped through broker authorization', () => {
+  const f = fixture();
+  f.candidate();
+  const run = f.call('curator_analyze') as { recommendation_ids: string[]; advisory_only: boolean };
+  expect(run.advisory_only).toBe(true);
+  const id = run.recommendation_ids[0];
+  expect(id).toBeTruthy();
+  expect(f.call('curator_recommendation_get', { recommendation_id: id }, 204)).toMatchObject({
+    advisory_only: true,
+  });
+  expect(() => f.call('curator_recommendation_get', { recommendation_id: id }, 205)).toThrow();
+  expect(() => f.call('curator_analyze', { project_id: 'b', action: 'promote' })).toThrow();
+  for (const op of ['curator_approve', 'curator_promote', 'curator_install', 'curator_dismiss'])
+    expect(() => f.call(op)).toThrow();
+  expect(f.db.prepare('SELECT active_version_id FROM skills').get()).toEqual({
+    active_version_id: null,
+  });
+});

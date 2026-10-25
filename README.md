@@ -494,3 +494,16 @@ pnpm verify:broker-os # exits 2 / NOT VERIFIED without the required administrato
 Behavioral mode now records immutable candidate/baseline/suite/policy evidence while V1 remains active. **Execution is disabled and behavioral results cannot authorize approval.** Docker/Seatbelt probes did not establish a qualified runner; no generated skill script is executed on the host and no successful behavioral upgrade is claimed. The existing explicit activation-gap procedure remains available.
 
 Use the existing evaluator with `--mode behavioral` and optional `--suite-id agentmind.clamp-contract --suite-version 1`. Exit 0 means a report was stored; inspect its NOT_VERIFIED execution status. See [policy and interfaces](docs/BEHAVIORAL_EVALUATION.md) and [implementation/results](docs/reviews/BE-001_IMPLEMENTATION.md). SEC-01 deployment remains unverified; no autonomous activation is enabled.
+
+## P3-001 advisory skill intelligence
+
+Opt-in local analysis now produces evidence-linked INVESTIGATE, REVIEW, POSSIBLE_STALE, POSSIBLE_DUPLICATE and IMPROVE recommendations. Confidence remains categorical and bounded; failure associations never prove skill causation or effectiveness. Analysis writes recommendation metadata only and cannot approve, promote, install or rewrite a skill.
+
+```sh
+pnpm build
+node packages/mcp-server/dist/curator.js --project-root /absolute/project --db /absolute/existing/registry.db --analyze
+node packages/mcp-server/dist/curator.js --project-root /absolute/project --db /absolute/existing/registry.db --recommendations
+# Add --enable-curator to a supervised MCP launch for the three advisory tools.
+```
+
+See [rules, trust, scope, lifecycle, limits and commands](docs/P3_001_ADVISORY.md) and [P3-001 implementation and test results](docs/reviews/P3-001_IMPLEMENTATION.md). SEC-01 protected deployment and BE-001 behavioral execution remain unverified; autonomous approval, promotion and distribution are not enabled.

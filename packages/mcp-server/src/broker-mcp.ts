@@ -3,6 +3,9 @@ import { parseArgs } from 'node:util';
 import {
   agentOperations,
   brokerRequest,
+  curatorAnalyzeSchema,
+  curatorGetSchema,
+  curatorListSchema,
   experienceRecordSchema,
   experienceSearchSchema,
   loadBrokerClient,
@@ -39,6 +42,9 @@ async function main() {
     },
   );
   const schemas = {
+    curator_analyze: curatorAnalyzeSchema,
+    curator_recommendations: curatorListSchema,
+    curator_recommendation_get: curatorGetSchema,
     memory_save: saveSchema,
     memory_search: searchSchema,
     experience_record: experienceRecordSchema,

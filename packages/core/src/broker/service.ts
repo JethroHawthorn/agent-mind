@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
+import { RecommendationService } from '../curator/service.js';
 import { ExperienceService } from '../experience.js';
 import { experienceReviewSchema } from '../experience-schemas.js';
 import { MemoryService } from '../memory.js';
@@ -61,6 +62,9 @@ export const agentOperations = [
   'skill_usage_record',
   'skill_usage_query',
   'skill_usage_summary',
+  'curator_analyze',
+  'curator_recommendations',
+  'curator_recommendation_get',
 ] as const;
 
 export const operatorQueryOperations = [
@@ -75,6 +79,8 @@ export const operatorQueryOperations = [
   'skill_evaluation',
   'skill_usage_query',
   'skill_usage_summary',
+  'curator_recommendations',
+  'curator_recommendation_get',
 ] as const;
 
 /** Broker extension schema v2 lives in the SAME registry transaction domain; core schema stays v9. */
@@ -166,6 +172,14 @@ export class BrokerService {
         authorization: 'os-peer-operator-v2',
         deployment_acceptance: 'NOT VERIFIED',
       };
+    if (
+      ['curator_analyze', 'curator_recommendations', 'curator_recommendation_get'].includes(p.op)
+    ) {
+      const curator = new RecommendationService(this.db, scope);
+      if (p.op === 'curator_analyze') return curator.analyze(p.input ?? {});
+      if (p.op === 'curator_recommendations') return curator.list(p.input ?? {});
+      return curator.get(p.input);
+    }
     const memory = new MemoryService(this.db, scope, auth.source);
     const experiences = new ExperienceService(this.db, scope, auth.source);
     const store = new SkillStore(this.db, scope);
