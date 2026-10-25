@@ -17,6 +17,7 @@ import {
   matchesRecord,
   materializePackage,
   moveChecked,
+  type PublicationPermissions,
   pathExists,
 } from './skill-distribution-files.js';
 import {
@@ -49,6 +50,7 @@ export class SkillDistributionService {
     private readonly db: Database.Database,
     scope: ProjectScope,
     homeRoot?: string,
+    private readonly publicationPermissions?: PublicationPermissions,
   ) {
     this.#scope = Object.freeze({ ...scope });
     this.#home = trustedDistributionHome(homeRoot);
@@ -516,8 +518,8 @@ export class SkillDistributionService {
     registryDigest: string,
   ) {
     const paths = this.paths(entry, intent);
-    createSafeDirectories(paths.base, paths.work);
-    createSafeDirectories(paths.base, paths.parent);
+    createSafeDirectories(paths.base, paths.work, this.publicationPermissions);
+    createSafeDirectories(paths.base, paths.parent, this.publicationPermissions);
     const newRecord = this.newRecord(intent);
     if (newRecord) {
       const fresh = this.registry(request);
@@ -528,6 +530,7 @@ export class SkillDistributionService {
         paths.stage,
         fresh.artifact.review.version.files,
         installationManifestSchema.parse(JSON.parse(intent.manifest_json ?? '')),
+        this.publicationPermissions,
       );
       intent.stage_identity = staged.identity;
       const saved = this.db
@@ -662,7 +665,7 @@ export class SkillDistributionService {
             intent.stage_identity &&
             matchesRecord(inspectPackage(paths.stage), next)
           ) {
-            createSafeDirectories(paths.base, paths.parent);
+            createSafeDirectories(paths.base, paths.parent, this.publicationPermissions);
             moveChecked(paths.base, paths.stage, paths.destination);
             if (!matchesRecord(inspectPackage(paths.destination), next))
               throw new Error('recovery integrity');

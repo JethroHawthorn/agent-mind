@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 import {
+  chmodSync,
+  chownSync,
   closeSync,
   constants,
+  fchmodSync,
+  fchownSync,
   fstatSync,
   fsyncSync,
   lstatSync,
@@ -62,14 +66,25 @@ export function inspectPath(base: string, path: string) {
   }
   return result;
 }
-export function createSafeDirectories(base: string, path: string) {
+export type PublicationPermissions = Readonly<{ gid: number }>;
+export function createSafeDirectories(
+  base: string,
+  path: string,
+  permissions?: PublicationPermissions,
+) {
   inspectPath(base, path);
   const rel = relative(base, path);
   let cursor = base;
   for (const part of rel.split(sep).filter(Boolean)) {
     cursor = join(cursor, part);
     inspectPath(base, dirname(cursor));
-    if (!pathExists(cursor)) mkdirSync(cursor, { mode: 0o700 });
+    if (!pathExists(cursor)) {
+      mkdirSync(cursor, { mode: 0o700 });
+      if (permissions) {
+        chownSync(cursor, -1, permissions.gid);
+        chmodSync(cursor, 0o750);
+      }
+    }
     inspectPath(base, cursor);
   }
 }
@@ -169,12 +184,17 @@ export function materializePackage(
   path: string,
   files: Array<{ path: string; content: string }>,
   manifest: InstallationManifest,
+  permissions?: PublicationPermissions,
 ) {
   inspectPath(base, dirname(path));
   mkdirSync(path, { mode: 0o700 });
+  if (permissions) {
+    chownSync(path, -1, permissions.gid);
+    chmodSync(path, 0o750);
+  }
   for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
     const dest = join(path, file.path);
-    createSafeDirectories(base, dirname(dest));
+    createSafeDirectories(base, dirname(dest), permissions);
     const fd = openSync(
       dest,
       constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
@@ -182,6 +202,10 @@ export function materializePackage(
     );
     try {
       writeFileSync(fd, file.content, 'utf8');
+      if (permissions) {
+        fchownSync(fd, -1, permissions.gid);
+        fchmodSync(fd, 0o640);
+      }
       fsyncSync(fd);
     } finally {
       closeSync(fd);
@@ -194,6 +218,10 @@ export function materializePackage(
   );
   try {
     writeFileSync(fd, JSON.stringify(manifest), 'utf8');
+    if (permissions) {
+      fchownSync(fd, -1, permissions.gid);
+      fchmodSync(fd, 0o640);
+    }
     fsyncSync(fd);
   } finally {
     closeSync(fd);

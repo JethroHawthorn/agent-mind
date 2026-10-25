@@ -21,7 +21,11 @@
     "lint": "biome check --error-on-warnings .",
     "format:check": "biome format .",
     "format": "biome check --write .",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm smoke"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm smoke",
+    "build:peer": "node scripts/build-peer.mjs",
+    "test:broker": "pnpm build && native/bin/agentmind-peer selftest && vitest run tests/unit/broker.test.ts tests/unit/broker-publication.test.ts tests/unit/broker-deployment.test.ts tests/integration/broker-native.test.ts",
+    "broker:deployment": "node scripts/broker-deployment.mjs",
+    "verify:broker-os": "node scripts/verify-broker-os.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",

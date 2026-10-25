@@ -154,6 +154,9 @@ export class SkillOperatorService {
             JSON.stringify({
               same_uid_boundary: false,
               confirmation_version: 1,
+              ...(authorization.broker_peer
+                ? { broker_peer: authorization.broker_peer, boundary: 'os-peer-v1' }
+                : {}),
               from_version_id: preview.transition.from_version_id,
               to_version_id: preview.transition.to_version_id,
             }),

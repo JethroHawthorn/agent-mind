@@ -6,7 +6,14 @@ import { AgentMindError } from './errors.js';
 import { localOperatorIdentity } from './local-operator.js';
 
 export type OperatorGrant = Readonly<{ session: string }>;
-type Authorization = { digest: string; operator: string; session: string; issued: number };
+type Authorization = {
+  digest: string;
+  operator: string;
+  session: string;
+  issued: number;
+  broker_peer?: { uid: number; gid: number };
+  issuer_uid?: number;
+};
 const grants = new WeakMap<object, Authorization>();
 export function reviewDigest(preview: unknown): string {
   return createHash('sha256').update(JSON.stringify(preview)).digest('hex');
@@ -66,6 +73,34 @@ export async function confirmOperatorReview(preview: unknown): Promise<OperatorG
   }
 }
 
+/** Broker-internal capability issuance. OS separation, not this function, protects authority.
+ * Not exported from the package entrypoint; called only after kernel-authenticated operator challenge. */
+export function issueBrokerGrant(
+  digest: string,
+  peer: { uid: number; gid: number },
+): OperatorGrant {
+  if (
+    !Number.isSafeInteger(peer.uid) ||
+    peer.uid <= 0 ||
+    !Number.isSafeInteger(peer.gid) ||
+    peer.gid < 0
+  )
+    throw new AgentMindError(
+      'OPERATOR_AUTHORIZATION_REQUIRED',
+      'Invalid authenticated broker peer.',
+    );
+  const grant = Object.freeze({ session: randomUUID() });
+  grants.set(grant, {
+    digest,
+    operator: `uid:${peer.uid}:broker-operator`,
+    session: grant.session,
+    issued: Date.now(),
+    broker_peer: { ...peer },
+    issuer_uid: process.getuid?.(),
+  });
+  return grant;
+}
+
 /** Runtime capability check, independent of CLI parsing; no caller-supplied approver fields. */
 export function consumeOperatorGrant(grant: unknown, digest: string) {
   const authorization = grant && typeof grant === 'object' ? grants.get(grant) : undefined;
@@ -84,7 +119,13 @@ export function consumeOperatorGrant(grant: unknown, digest: string) {
       'STALE_OPERATOR_REVIEW',
       'Confirmed state changed or confirmation expired. Inspect and confirm again.',
     );
-  if (authorization.operator !== localOperatorIdentity())
+  if (
+    authorization.broker_peer
+      ? authorization.issuer_uid === undefined ||
+        authorization.issuer_uid !== process.getuid?.() ||
+        authorization.issuer_uid !== process.geteuid?.()
+      : authorization.operator !== localOperatorIdentity()
+  )
     throw new AgentMindError('OPERATOR_AUTHORIZATION_REQUIRED', 'Local operator identity changed.');
   return authorization;
 }

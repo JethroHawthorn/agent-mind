@@ -6,7 +6,7 @@ Phase 1 adds explicit structured experience capture to the Phase 0 memory server
 
 ## Install and check
 
-Phase 2 is being delivered one issue at a time. **P2-001 through P2-007 are implemented**, including approved active skill distribution and local usage/outcome telemetry. The default MCP server exposes 16 tools; no privileged approval, promotion or filesystem mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. P2-008 adds offline E2E tests and a resumable native verifier. Its reviewed standard local upgrade procedure is [explicit-activation-gap-v1](docs/PHASE_2_UPGRADE_POLICY.md); continuous-active changed-version upgrades remain unsupported. **Full native acceptance remains NOT VERIFIED**, and protected operator deployment is not implemented. Autonomous Phase 3 is NO-GO. See [review remediation](docs/reviews/P2-008_REMEDIATION.md).
+Phase 2 is being delivered one issue at a time. **P2-001 through P2-007 are implemented**, including approved active skill distribution and local usage/outcome telemetry. The default MCP server exposes 16 tools; no privileged approval, promotion or filesystem mutation is exposed over MCP. New candidates remain unverified until evaluation, and a static PASS does not establish task success. P2-008 adds offline E2E tests and a resumable native verifier. Its reviewed standard local upgrade procedure is [explicit-activation-gap-v1](docs/PHASE_2_UPGRADE_POLICY.md); continuous-active changed-version upgrades remain unsupported. **Full native acceptance remains NOT VERIFIED**, and protected operator deployment has not been executed or verified. Autonomous Phase 3 is NO-GO. See [review remediation](docs/reviews/P2-008_REMEDIATION.md).
 
 **Approval trust boundary:** this deployment shares an OS user, source code and SQLite access with the agent. Terminal confirmation is **not adversarially secure human authentication**: a same-user agent can automate a PTY or edit SQLite. P2-005 implements an explicit, artifact-bound local workflow and records that limitation in audit metadata. Strong human-only authorization requires a separately protected operator/broker and storage boundary; it is not configured here. See the [operator/security guide](docs/PHASE_2_OPERATOR.md) and [implementation report](docs/reviews/P2-005_IMPLEMENTATION.md).
 
@@ -463,3 +463,27 @@ See the [traceability map and reproducible procedure](docs/PHASE_2_E2E.md), [P2-
 `pnpm check` includes real POSIX PTY tests using Python 3's standard library. Those tests automate confirmation to verify mechanics and explicitly demonstrate the same-user bypass; their passing status is **not a human-authentication security claim**. Runtime requires only Node.js; no new model subscription or API key is used. Native Codex/Claude skill execution remains NOT VERIFIED.
 
 Claude direct `/skill` usage can optionally be observed through `UserPromptExpansion`; see the [usage guide](docs/PHASE_2_USAGE.md). Its `direct_slash_sessions` measure records session presence separately from tool invocation counts. Native delivery and consumed bytes remain unverified until observed in a real session. See [final review remediation](docs/reviews/PHASE_2_FINAL_REMEDIATION.md) for finding dispositions and remaining release blockers.
+
+
+## SEC-01 experimental protected broker
+
+A separate native Unix IPC helper, broker process, restricted MCP adapter and operator client are implemented for security review. **Protected deployment is NOT VERIFIED and is not production ready.** This development sandbox denies pathname socket binding (EPERM), and separate OS identities were not provisioned. The SEC-01 listener tests fail visibly here; the existing Phase 0–2 regression tests retain their supervised-mode guarantees.
+
+See [broker threat model and deployment](docs/SEC01_BROKER.md) and [SEC-01 results](docs/reviews/SEC-01_IMPLEMENTATION.md). Protected startup requires administrator-owned runtime/configuration, distinct dedicated identities and broker-private storage. No service, user, production permission or registry is changed automatically. Broker publication now supports administrator-provisioned broker-owned roots and project-specific read groups; agent-writable copies and native shadowing remain untrusted. Protected mode is macOS-only; Linux is explicitly unsupported. No autonomous learning is enabled.
+
+```sh
+pnpm build
+pnpm build:peer  # requires compatible native C compiler/SDK
+# On this host the explicit compatible installed SDK is:
+pnpm build:peer /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
+pnpm test:broker # includes real pathname IPC assertions; EPERM is a failure
+```
+
+Existing supervised commands remain available. Never use a same-UID configuration, a flag or a passed unit suite as evidence that the agent/operator OS boundary is established.
+
+SEC-01-R adds protocol-v2 public review tickets (no returned confirmation credential), private operator socket permissions, safe stale-socket recovery, root-owned runtime/dependency checks, read-only deployment planning/preflight and an administrator-run separate-UID acceptance harness. See the [macOS deployment runbook](docs/SEC01_MACOS_DEPLOYMENT.md) and [remediation evidence](docs/reviews/SEC-01_REMEDIATION.md). **This host has not been provisioned or verified as protected.** No service/account/production ownership changes are performed by these development tools.
+
+```sh
+pnpm broker:deployment --config /reviewed/broker.json --broker-user _agentmind_broker
+pnpm verify:broker-os # exits 2 / NOT VERIFIED without the required administrator environment
+```

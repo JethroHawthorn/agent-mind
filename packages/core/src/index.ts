@@ -1,3 +1,7 @@
+export * from './broker/client.js';
+export * from './broker/policy.js';
+export * from './broker/publication.js';
+export * from './broker/service.js';
 export * from './database.js';
 export * from './errors.js';
 export * from './experience.js';
