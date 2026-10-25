@@ -487,3 +487,10 @@ SEC-01-R adds protocol-v2 public review tickets (no returned confirmation creden
 pnpm broker:deployment --config /reviewed/broker.json --broker-user _agentmind_broker
 pnpm verify:broker-os # exits 2 / NOT VERIFIED without the required administrator environment
 ```
+
+
+## BE-001 behavioral evaluation contracts
+
+Behavioral mode now records immutable candidate/baseline/suite/policy evidence while V1 remains active. **Execution is disabled and behavioral results cannot authorize approval.** Docker/Seatbelt probes did not establish a qualified runner; no generated skill script is executed on the host and no successful behavioral upgrade is claimed. The existing explicit activation-gap procedure remains available.
+
+Use the existing evaluator with `--mode behavioral` and optional `--suite-id agentmind.clamp-contract --suite-version 1`. Exit 0 means a report was stored; inspect its NOT_VERIFIED execution status. See [policy and interfaces](docs/BEHAVIORAL_EVALUATION.md) and [implementation/results](docs/reviews/BE-001_IMPLEMENTATION.md). SEC-01 deployment remains unverified; no autonomous activation is enabled.

@@ -16,6 +16,9 @@ function main() {
         'expected-content-hash': { type: 'string' },
         'expected-state-revision': { type: 'string' },
         mode: { type: 'string' },
+        'suite-id': { type: 'string' },
+        'suite-version': { type: 'string' },
+        'expected-suite-digest': { type: 'string' },
         'report-id': { type: 'string' },
         'list-version-id': { type: 'string' },
         limit: { type: 'string' },
@@ -34,6 +37,9 @@ function main() {
     values['expected-content-hash'],
     values['expected-state-revision'],
     values.mode,
+    values['suite-id'],
+    values['suite-version'],
+    values['expected-suite-digest'],
   ];
   const actions = [values['version-id'], values['report-id'], values['list-version-id']].filter(
     (value) => value !== undefined,
@@ -67,6 +73,13 @@ function main() {
             expected_content_hash: values['expected-content-hash'],
             expected_state_revision: integer(values['expected-state-revision']),
             ...(values.mode !== undefined ? { mode: values.mode } : {}),
+            ...(values['suite-id'] !== undefined ? { suite_id: values['suite-id'] } : {}),
+            ...(values['suite-version'] !== undefined
+              ? { suite_version: integer(values['suite-version']) }
+              : {}),
+            ...(values['expected-suite-digest'] !== undefined
+              ? { expected_suite_digest: values['expected-suite-digest'] }
+              : {}),
           });
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } finally {

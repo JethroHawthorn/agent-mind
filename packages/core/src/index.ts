@@ -1,3 +1,5 @@
+export * from './behavioral/model.js';
+export * from './behavioral/storage.js';
 export * from './broker/client.js';
 export * from './broker/policy.js';
 export * from './broker/publication.js';

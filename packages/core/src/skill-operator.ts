@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
+import { BEHAVIORAL_POLICY } from './behavioral/model.js';
+import { assertBehavioralApproval } from './behavioral/storage.js';
 import { AgentMindError } from './errors.js';
 import { consumeOperatorGrant, reviewDigest } from './operator-confirmation.js';
 import { assertSafeSummary } from './privacy.js';
@@ -225,7 +227,7 @@ export class SkillOperatorService {
           r.state.review_id,
           r.evaluation?.id,
           r.version.content_hash,
-          SKILL_EVALUATOR_VERSION,
+          r.evaluation?.evaluator_version,
         );
       if (!audit)
         throw new AgentMindError(
@@ -248,6 +250,8 @@ export class SkillOperatorService {
   }
   private evidence(r: Review, historical: boolean) {
     const e = r.evaluation;
+    if (e?.evaluator_version === BEHAVIORAL_POLICY)
+      assertBehavioralApproval(this.db, this.#scope, e);
     if (
       !e ||
       e.id !== r.state.latest_evaluation_id ||

@@ -57,11 +57,12 @@ export class SkillReviewService {
       const active = snapshot.identity.active_version_id
         ? new SkillStore(this.db, this.#scope).getVersion(snapshot.identity.active_version_id)
         : null;
-      const evaluation = snapshot.state.latest_evaluation_id
+      const evaluationReport = snapshot.state.latest_evaluation_id
         ? new SkillEvaluationService(this.db, this.#scope).getReport({
             evaluation_id: snapshot.state.latest_evaluation_id,
-          }).evaluation
+          })
         : null;
+      const evaluation = evaluationReport?.evaluation ?? null;
       const sources = this.db
         .prepare(
           `SELECT e.id,e.approval_status,e.updated_at FROM skill_version_sources s JOIN experiences e ON e.id=s.experience_id AND e.project_id=s.project_id WHERE s.version_id=? AND s.project_id=? ORDER BY e.id`,
@@ -87,6 +88,9 @@ export class SkillReviewService {
         project_root: this.#scope.root,
         active,
         evaluation,
+        ...(evaluationReport && 'behavioral' in evaluationReport
+          ? { behavioral: evaluationReport.behavioral }
+          : {}),
         sources_current: sources,
         operator_events: audit.slice(0, 100),
         operator_events_truncated: audit.length > 100,
@@ -113,6 +117,7 @@ export class SkillReviewService {
     return {
       version_id: r.version.id,
       evaluation: r.evaluation,
+      ...('behavioral' in r ? { behavioral: r.behavioral } : {}),
       warning: r.warning,
       untrusted_data: true as const,
     };

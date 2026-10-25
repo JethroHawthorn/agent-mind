@@ -1,6 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
+import {
+  BEHAVIORAL_POLICY,
+  behavioralDigest,
+  DEFAULT_BEHAVIORAL_SUITE,
+  disabledBehavioralExecution,
+  resolveBehavioralSuite,
+} from './behavioral/model.js';
+import {
+  migrateBehavioral,
+  persistBehavioralEvidence,
+  readBehavioralEvidence,
+} from './behavioral/storage.js';
 import { AgentMindError } from './errors.js';
 import type { ProjectScope } from './project.js';
 import {
@@ -14,12 +26,35 @@ import { hashSkillFiles, skillEvaluationSchema, skillFilesSchema } from './skill
 import { SkillStore } from './skill-store.js';
 import { nextTimestamp } from './timestamp.js';
 
-export const skillEvaluateSchema = z.strictObject({
-  version_id: z.uuid(),
-  expected_content_hash: z.string().regex(/^[a-f0-9]{64}$/),
-  expected_state_revision: z.number().int().nonnegative(),
-  mode: z.enum(['static', 'behavioral']).default('static'),
-});
+export const skillEvaluateSchema = z
+  .strictObject({
+    version_id: z.uuid(),
+    expected_content_hash: z.string().regex(/^[a-f0-9]{64}$/),
+    expected_state_revision: z.number().int().nonnegative(),
+    mode: z.enum(['static', 'behavioral']).default('static'),
+    suite_id: z
+      .string()
+      .regex(/^[a-z][a-z0-9.-]{0,99}$/)
+      .optional(),
+    suite_version: z.number().int().positive().optional(),
+    expected_suite_digest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  })
+  .superRefine((p, ctx) => {
+    if (
+      (p.mode !== 'behavioral' &&
+        (p.suite_id !== undefined ||
+          p.suite_version !== undefined ||
+          p.expected_suite_digest !== undefined)) ||
+      (p.suite_id === undefined) !== (p.suite_version === undefined)
+    )
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Suite selection is behavioral-only and requires ID plus version.',
+      });
+  });
 export const skillEvaluationGetSchema = z.strictObject({ evaluation_id: z.uuid() });
 export const skillEvaluationListSchema = z.strictObject({
   version_id: z.uuid(),
@@ -86,10 +121,24 @@ export class SkillEvaluationService {
           details:
             'Checks current source approval only; evidence references are not executed or independently verified.',
         });
-        const regression = compareStaticRegression(
-          bundle,
-          baseline ? { ...baseline.version, name: baseline.identity.name } : null,
-        );
+        const selector = {
+          suite_id: request.suite_id ?? DEFAULT_BEHAVIORAL_SUITE,
+          suite_version: request.suite_version ?? 1,
+          ...(request.expected_suite_digest ? { suite_digest: request.expected_suite_digest } : {}),
+        };
+        const selected = request.mode === 'behavioral' ? resolveBehavioralSuite(selector) : null;
+        const regression =
+          request.mode === 'behavioral'
+            ? {
+                name: 'regression.active-baseline',
+                result: 'NOT_VERIFIED' as const,
+                details:
+                  'Paired observed execution is required; changed Markdown is not a demonstrated behavioral regression.',
+              }
+            : compareStaticRegression(
+                bundle,
+                baseline ? { ...baseline.version, name: baseline.identity.name } : null,
+              );
         checks.push(regression);
         checks.push({
           name: 'baseline.snapshot',
@@ -100,20 +149,39 @@ export class SkillEvaluationService {
             identity_revision: snapshot.identity.revision,
           }),
         });
-        if (request.mode === 'behavioral')
-          checks.push({
-            name: 'execution.behavioral',
-            result: 'NOT_VERIFIED',
-            details:
-              'Behavioral execution is unavailable. No scripts, subprocesses or sandboxed execution were run.',
-          });
+        if (request.mode === 'behavioral') {
+          migrateBehavioral(this.db);
+          checks.push(
+            {
+              name: 'suite.trusted',
+              result: selected ? 'PASS' : 'NOT_VERIFIED',
+              details: selected
+                ? `Release-owned suite ${selected.definition.id}@${selected.definition.version}; SHA-256 ${selected.digest}. Contract only, not accepted execution.`
+                : 'Requested suite/version is unsupported.',
+            },
+            {
+              name: 'execution.behavioral',
+              result: 'NOT_VERIFIED',
+              details:
+                'No accepted isolation backend. No scripts, subprocesses, network or host task execution occurred.',
+            },
+            {
+              name: 'execution.baseline',
+              result: 'NOT_VERIFIED',
+              details: baseline
+                ? 'Active baseline snapshot retained; no execution observation exists.'
+                : 'No active baseline is available for a mandatory paired comparison.',
+            },
+          );
+        }
         const report = skillEvaluationSchema.parse({
           id: randomUUID(),
           version_id: snapshot.version.id,
           skill_id: snapshot.identity.id,
           project_id: this.#project.id,
           evaluator: SKILL_EVALUATOR,
-          evaluator_version: SKILL_EVALUATOR_VERSION,
+          evaluator_version:
+            request.mode === 'behavioral' ? BEHAVIORAL_POLICY : SKILL_EVALUATOR_VERSION,
           result: aggregateEvaluation(checks),
           checks,
           baseline_version_id: baselineId,
@@ -141,6 +209,32 @@ export class SkillEvaluationService {
             report.content_hash,
             report.created_at,
           );
+        if (request.mode === 'behavioral')
+          persistBehavioralEvidence(this.db, report, {
+            schema_version: 1,
+            policy_version: BEHAVIORAL_POLICY,
+            project_id: this.#project.id,
+            evaluation_id: report.id,
+            candidate: { version_id: snapshot.version.id, digest: snapshot.version.content_hash },
+            baseline: baseline
+              ? {
+                  version_id: baseline.version.id,
+                  digest: baseline.version.content_hash,
+                  identity_revision: snapshot.identity.revision,
+                }
+              : null,
+            selector,
+            suite: selected
+              ? {
+                  id: selected.definition.id,
+                  version: selected.definition.version,
+                  digest: selected.digest,
+                }
+              : null,
+            execution: disabledBehavioralExecution(),
+            comparison_result: 'NOT_VERIFIED',
+            evaluation_digest: behavioralDigest(report),
+          });
         return this.getReport({ evaluation_id: report.id });
       })
       .immediate();
@@ -158,8 +252,12 @@ export class SkillEvaluationService {
         'Evaluation report is not available in this project.',
       );
     const { checks_json, ...fields } = row;
+    const evaluation = skillEvaluationSchema.parse({ ...fields, checks: JSON.parse(checks_json) });
     return {
-      evaluation: skillEvaluationSchema.parse({ ...fields, checks: JSON.parse(checks_json) }),
+      evaluation,
+      ...(evaluation.evaluator_version === BEHAVIORAL_POLICY
+        ? { behavioral: readBehavioralEvidence(this.db, this.#project, evaluation) }
+        : {}),
       capabilities: {
         execution_supported: false,
         process_isolation_supported: false,
