@@ -6,6 +6,7 @@ import { RecommendationService } from '../curator/service.js';
 import { ExperienceService } from '../experience.js';
 import { experienceReviewSchema } from '../experience-schemas.js';
 import { LearningSignalService } from '../learning/service.js';
+import { LearningReviewDecisions, LearningReviewService } from '../learning-review/service.js';
 import { MemoryService } from '../memory.js';
 import { issueBrokerGrant, reviewDigest } from '../operator-confirmation.js';
 import { assertSafeSummary } from '../privacy.js';
@@ -47,6 +48,10 @@ const commitSchema = z.strictObject({
   review_digest: z.string().regex(/^[a-f0-9]{64}$/),
 });
 export const agentOperations = [
+  'review_queue',
+  'review_get',
+  'review_evidence',
+  'review_diff',
   'memory_save',
   'memory_search',
   'experience_record',
@@ -84,6 +89,11 @@ export const agentOperations = [
 ] as const;
 
 export const operatorQueryOperations = [
+  'review_handoff',
+  'review_queue',
+  'review_get',
+  'review_evidence',
+  'review_diff',
   'memory_search',
   'experience_search',
   'skill_get',
@@ -186,6 +196,32 @@ export class BrokerService {
     const p = parsed.data;
     const auth = principal(this.config, channel, peer, p.project);
     const scope = required(this.scopes.get(auth.project.name));
+    if (['review_queue', 'review_get', 'review_evidence', 'review_diff'].includes(p.op)) {
+      const queue = new LearningReviewService(this.db, scope);
+      if (p.op === 'review_queue') return queue.list(p.input ?? {});
+      if (p.op === 'review_get') return queue.get(p.input);
+      if (p.op === 'review_evidence') return queue.evidence(p.input);
+      return queue.diff(p.input);
+    }
+    if (p.op === 'review_handoff') {
+      if (channel !== 'operator') denied('Handoff is an operator diagnostic.');
+      return new LearningReviewService(this.db, scope).handoff(p.input);
+    }
+    if (p.op === 'review_decide') {
+      if (channel !== 'operator')
+        denied('Review decisions require the independently authenticated operator channel.');
+      return this.db
+        .transaction(() => {
+          const result = new LearningReviewDecisions(this.db, scope, {
+            method: 'broker-peer-review-v1',
+            uid: peer.uid,
+            gid: peer.gid,
+          }).decide(p.input);
+          this.audit(peer, auth.project.name, 'review_decide', 'advisory-only');
+          return result;
+        })
+        .immediate();
+    }
     if (p.op === 'broker_health')
       return {
         schema_version: 1,

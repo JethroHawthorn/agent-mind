@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {
   ExperienceService,
+  LearningReviewService,
   LearningSignalService,
   MemoryService,
   openDatabase,
@@ -69,6 +70,7 @@ async function main(): Promise<void> {
       config.authoringEnabled
         ? new SkillAuthoringService(db, config.project, config.sourceAgent, config.proposalEnabled)
         : undefined,
+      config.authoringEnabled ? new LearningReviewService(db, config.project) : undefined,
     );
     const shutdown = createShutdown({
       closeServer: () => server.close(),

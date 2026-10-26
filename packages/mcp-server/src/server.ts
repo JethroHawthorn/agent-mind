@@ -13,6 +13,7 @@ import {
   type ExperienceService,
   experienceRecordSchema,
   experienceSearchSchema,
+  type LearningReviewService,
   type LearningSignalService,
   learningDetectSchema,
   learningIdSchema,
@@ -21,6 +22,8 @@ import {
   learningRefreshSchema,
   type MemoryService,
   type RecommendationService,
+  reviewGetSchema,
+  reviewListSchema,
   type SkillAuthoringService,
   type SkillProposalService,
   type SkillReviewService,
@@ -56,6 +59,7 @@ export function createServer(
   curator?: RecommendationService,
   learning?: LearningSignalService,
   authoring?: SkillAuthoringService,
+  reviewQueue?: LearningReviewService,
 ): McpServer {
   const server = new McpServer(
     { name: 'agentmind', version: '0.0.1' },
@@ -445,6 +449,47 @@ export function createServer(
         annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       },
       (p) => run(() => authoring.evaluate(p)),
+    );
+  }
+  if (reviewQueue) {
+    server.registerTool(
+      'review_queue',
+      {
+        description:
+          'Bounded advisory learning review queue. Follow next_offset even for empty pages; exhausted indicates completion. OFFSET_LIMIT_REACHED requires narrower filters. No decision or approval authority.',
+        inputSchema: reviewListSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => reviewQueue.list(p)),
+    );
+    server.registerTool(
+      'review_get',
+      {
+        description:
+          'Inspect scoped proposal, evidence trust, actual lifecycle and review snapshot.',
+        inputSchema: reviewGetSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => reviewQueue.get(p)),
+    );
+    server.registerTool(
+      'review_evidence',
+      {
+        description: 'Read bounded scoped learning evidence; agent claims remain unverified.',
+        inputSchema: reviewGetSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => reviewQueue.evidence(p)),
+    );
+    server.registerTool(
+      'review_diff',
+      {
+        description:
+          'Read hash-checked immutable before/after pages. Continue until next_offset is null; redaction is explicit.',
+        inputSchema: authoringDiffSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => reviewQueue.diff(p)),
     );
   }
   return server;

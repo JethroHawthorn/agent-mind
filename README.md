@@ -550,3 +550,20 @@ node /absolute/agent-mind/packages/mcp-server/dist/authoring.js --project-root "
 ```
 
 See [schemas, MCP/CLI workflow, literal patches, budgets and limitations](docs/P3_004_AUTHORING.md) and [implementation/test evidence](docs/reviews/P3-004_IMPLEMENTATION.md). Static PASS is not behavioral proof. Rewrite evaluation through this helper requires currently unavailable behavioral execution, and no authoring response grants approval or activation authority. Native Codex MCP read and complete authoring remain NOT VERIFIED after local-state permission failure; Claude authenticated testing remains deferred.
+
+### P3-005 learning review queue
+
+The advisory queue unifies P3-004 proposals with their linked learning signals, experiences and recommendations. It supports scoped filtering, paginated immutable diffs, evidence inspection, defer/dismiss/reopen/review/recommend decisions, stale-snapshot checks and a diagnostic handoff to the existing approval workflow. A review decision never approves, activates or distributes a skill.
+
+```sh
+pnpm build
+node packages/mcp-server/dist/learning-review.js --project-root /absolute/project --db /absolute/registry.db --list --json
+node packages/mcp-server/dist/learning-review.js --project-root /absolute/project --db /absolute/registry.db --show PROPOSAL_UUID --json
+node packages/mcp-server/dist/learning-review.js --project-root /absolute/project --db /absolute/registry.db --diff PROPOSAL_UUID --path SKILL.md --offset 0 --limit 1000 --json
+```
+
+Run from the authorized project directory; use an absolute path to the CLI if that directory differs from this checkout. MCP with `--enable-authoring` adds only read-only `review_queue`, `review_get`, `review_evidence` and `review_diff`. Operator-only decisions are available through the separate CLI and, on a deployed broker, its authenticated operator channel. Same-UID supervised decisions are not adversarially authenticated human actions. Protected deployment and behavioral execution remain unverified on this host.
+
+See [operator guide](docs/P3_005_REVIEW_QUEUE.md) for exact decision JSON, snapshot/dismissal policies, safe full-diff paging, protected broker configuration and approval handoff. See [implementation and verification report](docs/reviews/P3-005_IMPLEMENTATION.md) for current evidence and limitations.
+
+Review pagination includes explicit `page_status` and `exhausted` fields. Follow `next_offset` on `CONTINUE` even when `items` is empty; on `OFFSET_LIMIT_REACHED`, narrow filters and restart. The CLI prints continuation guidance to stderr. Run `node scripts/verify-authoring-codex.mjs --review` for an isolated native read-connectivity probe; this does not verify populated proposal review or approval. See [P3-005 remediation](docs/reviews/P3-005_REMEDIATION.md) for unresolved deployment and sandbox prerequisites.
