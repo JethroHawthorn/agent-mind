@@ -51,7 +51,7 @@ export type LearningE2E = {
   event: () => string;
   cleanup: () => Promise<void>;
 };
-export async function learningE2E(): Promise<LearningE2E> {
+export async function learningE2E(options: { continuous?: boolean } = {}): Promise<LearningE2E> {
   const fixture = createLearningFixture();
   const root = fixture.root;
   const path = join(root, 'registry.db');
@@ -74,6 +74,9 @@ export async function learningE2E(): Promise<LearningE2E> {
           path,
           '--source-agent',
           agent,
+          ...(options.continuous
+            ? ['--enable-learning', '--enable-authoring', '--enable-retrieval', '--enable-curator']
+            : []),
         ],
       }),
     );

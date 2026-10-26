@@ -584,3 +584,11 @@ Run from the authorized project directory and use absolute CLI paths if it diffe
 The optional [Router Skill](skills/agentmind-router/SKILL.md) is supplied without installation. [Retrieval guide](docs/P3_006_RETRIEVAL.md) covers safe setup, budgets, resources and native acceptance. [Implementation report](docs/reviews/P3-006_IMPLEMENTATION.md) records actual quality metrics, benchmarks and regression results. Native Codex/Claude use, protected deployment and behavioral execution remain unverified here; MCP-delivered instructions are not native installed skills.
 
 P3-006 review hardening makes lexical-only matching and candidate limits explicit in discovery diagnostics. A no-match result is not proof that no relevant skill exists; reformulate at most once using task-grounded terms. Candidate verification remains capped at 50, while SQL sorting cost remains query-dependent. See [review remediation](docs/reviews/P3-006_REMEDIATION.md) for fixes and unresolved native/deployment prerequisites.
+
+### P3-007 continuous learning acceptance
+
+Run `pnpm test:e2e` for the disposable offline learning-loop scenarios and existing cross-agent protocol tests. Reports distinguish fixture-generated proposals and automated test-operator confirmations from actual AI authorship/human consent. Changed-version behavioral upgrades remain blocked when BE-001 evidence is incomplete.
+
+`pnpm verify:learning-cli --prepare` creates a disposable project; `--resume /returned/project --probe --native-timeout-seconds 40` attempts explicitly instructed native Codex capture. The probe never approves or installs skills. Native authoring/reuse require separate manual observation and the existing operator workflow. An incomplete or blocked probe exits 2 and remains NOT VERIFIED. Claude/Gemini native checks are deferred.
+
+See [acceptance and manual workflow](docs/CONTINUOUS_LEARNING_ACCEPTANCE.md) and [actual results and 30-requirement matrix](docs/reviews/P3-007_IMPLEMENTATION.md). P3-007 is not fully accepted: native reuse, verified behavioral upgrades and deployed OS authorization remain unverified; six native broker socket tests remain blocked/failing in this managed environment.
