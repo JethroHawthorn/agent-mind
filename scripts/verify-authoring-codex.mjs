@@ -8,11 +8,16 @@ import { parseArgs } from 'node:util';
 import { MemoryService, openDatabase, resolveProject } from '../packages/core/dist/index.js';
 
 const { values } = parseArgs({
-  options: { review: { type: 'boolean' } },
+  options: { review: { type: 'boolean' }, retrieval: { type: 'boolean' } },
   strict: true,
   allowPositionals: false,
 });
-const tool = values.review ? 'review_queue' : 'skill_authoring_list';
+if (values.review && values.retrieval) throw new Error('Choose one read probe.');
+const tool = values.retrieval
+  ? 'skill_discover'
+  : values.review
+    ? 'review_queue'
+    : 'skill_authoring_list';
 const project = mkdtempSync(join(tmpdir(), 'agentmind-authoring-native-'));
 const path = join(project, 'registry.db');
 const scope = resolveProject(project, project);
@@ -20,7 +25,7 @@ const db = openDatabase(path);
 new MemoryService(db, scope, 'codex');
 db.close();
 try {
-  const config = `{agentmind_authoring={command=${JSON.stringify(process.execPath)},args=${JSON.stringify([resolve('packages/mcp-server/dist/index.js'), '--project-root', project, '--db', path, '--source-agent', 'codex', '--enable-authoring'])},cwd=${JSON.stringify(project)}}`;
+  const config = `{agentmind_authoring={command=${JSON.stringify(process.execPath)},args=${JSON.stringify([resolve('packages/mcp-server/dist/index.js'), '--project-root', project, '--db', path, '--source-agent', 'codex', values.retrieval ? '--enable-retrieval' : '--enable-authoring'])},cwd=${JSON.stringify(project)}}`;
   const result = spawnSync(
     'codex',
     [
@@ -32,7 +37,7 @@ try {
       '--json',
       '-c',
       `mcp_servers=${config}`,
-      `Use only agentmind_authoring MCP. Call ${tool} once. Do not submit candidates, record decisions, approve anything, use shell tools or read other files. Report that an empty list verifies connectivity only, not proposal authoring, human review or approval.`,
+      `Use only agentmind_authoring MCP. Call ${tool} once${values.retrieval ? ' with {"query":"harmless offline discovery","limit":1}' : ''}. Do not submit candidates, record decisions, approve anything, use shell tools or read other files. Report that an empty list verifies connectivity only, not proposal authoring, human review or approval.`,
     ],
     { cwd: project, encoding: 'utf8', timeout: 45000, killSignal: 'SIGKILL', maxBuffer: 1048576 },
   );
@@ -65,6 +70,8 @@ try {
     JSON.stringify(
       {
         probed_tool: tool,
+        retrieval_workflow:
+          'NOT VERIFIED; an empty discovery probe cannot verify main/resource use or task behavior',
         proposal_review:
           'NOT VERIFIED; empty disposable registry probe checks read connectivity only',
         native_mcp: observed ? 'REAL CODEX MCP READ VERIFIED' : 'NOT VERIFIED',

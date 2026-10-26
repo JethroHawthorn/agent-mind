@@ -7,6 +7,7 @@ import { AgentMindError } from './errors.js';
 import { localOperatorIdentity } from './local-operator.js';
 import { consumeOperatorGrant, reviewDigest } from './operator-confirmation.js';
 import type { ProjectScope } from './project.js';
+import { resolveActiveArtifact } from './skill-active-artifact.js';
 import {
   createSafeDirectories,
   deleteCheckedPackage,
@@ -33,7 +34,6 @@ import {
   distributionDestination,
   trustedDistributionHome,
 } from './skill-distribution-targets.js';
-import { SkillOperatorService } from './skill-operator.js';
 import { diffSkillFiles, type SkillReviewService } from './skill-review.js';
 import { SkillStore } from './skill-store.js';
 import { nextTimestamp } from './timestamp.js';
@@ -74,31 +74,13 @@ export class SkillDistributionService {
     let error: string | null = null;
     if (identity.active_version_id) {
       try {
-        const eligible = new SkillOperatorService(this.db, this.#scope).prepare({
-          action: 'promote',
-          version_id: identity.active_version_id,
-        });
+        const eligible = resolveActiveArtifact(this.db, this.#scope, identity.id);
         artifact = {
           review: {
             ...eligible.review,
             warning: 'Registry provenance only; distribution entries govern filesystem changes.',
           },
         };
-        const event = this.db
-          .prepare(
-            `SELECT id FROM skill_operator_events WHERE project_id=? AND version_id=? AND promotion_id=? AND action IN ('promote','rollback') AND content_hash=? AND authorization_method='local-tty-confirmation-v1'`,
-          )
-          .get(
-            this.#scope.id,
-            identity.active_version_id,
-            identity.last_transition_id,
-            artifact.review.version.content_hash,
-          );
-        if (!event)
-          throw new AgentMindError(
-            'OPERATOR_APPROVAL_REQUIRED',
-            'Active transition lacks operator provenance.',
-          );
       } catch (e) {
         artifact = null;
         error = e instanceof AgentMindError ? e.code : 'SKILL_INTEGRITY_ERROR';

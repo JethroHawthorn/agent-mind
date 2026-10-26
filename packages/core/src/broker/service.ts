@@ -11,6 +11,8 @@ import { MemoryService } from '../memory.js';
 import { issueBrokerGrant, reviewDigest } from '../operator-confirmation.js';
 import { assertSafeSummary } from '../privacy.js';
 import { resolveProject } from '../project.js';
+import { SkillRetrievalService } from '../retrieval/service.js';
+import { migrateRetrieval } from '../retrieval/storage.js';
 import { distributionRequestSchema } from '../skill-distribution-model.js';
 import { SkillEvaluationService } from '../skill-evaluation.js';
 import { SkillOperatorService, skillOperatorActionSchema } from '../skill-operator.js';
@@ -48,6 +50,10 @@ const commitSchema = z.strictObject({
   review_digest: z.string().regex(/^[a-f0-9]{64}$/),
 });
 export const agentOperations = [
+  'skill_discover',
+  'skill_load',
+  'skill_resources',
+  'skill_resource_get',
   'review_queue',
   'review_get',
   'review_evidence',
@@ -89,6 +95,10 @@ export const agentOperations = [
 ] as const;
 
 export const operatorQueryOperations = [
+  'skill_discover',
+  'skill_load',
+  'skill_resources',
+  'skill_resource_get',
   'review_handoff',
   'review_queue',
   'review_get',
@@ -157,6 +167,7 @@ export class BrokerService {
   ) {
     validateBrokerConfig(config);
     migrateBroker(db);
+    migrateRetrieval(db);
     this.scopes = new Map(
       config.projects.map((p) => {
         const scope = resolveProject(p.root, p.root, p.project_key);
@@ -196,6 +207,13 @@ export class BrokerService {
     const p = parsed.data;
     const auth = principal(this.config, channel, peer, p.project);
     const scope = required(this.scopes.get(auth.project.name));
+    if (['skill_discover', 'skill_load', 'skill_resources', 'skill_resource_get'].includes(p.op)) {
+      const retrieval = new SkillRetrievalService(this.db, scope);
+      if (p.op === 'skill_discover') return retrieval.discover(p.input);
+      if (p.op === 'skill_load') return retrieval.load(p.input);
+      if (p.op === 'skill_resources') return retrieval.resources(p.input);
+      return retrieval.resource(p.input);
+    }
     if (['review_queue', 'review_get', 'review_evidence', 'review_diff'].includes(p.op)) {
       const queue = new LearningReviewService(this.db, scope);
       if (p.op === 'review_queue') return queue.list(p.input ?? {});

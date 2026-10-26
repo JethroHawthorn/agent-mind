@@ -26,16 +26,21 @@ import {
   reviewListSchema,
   type SkillAuthoringService,
   type SkillProposalService,
+  type SkillRetrievalService,
   type SkillReviewService,
   type SkillStore,
   type SkillUsageService,
   safeError,
   saveSchema,
   searchSchema,
+  skillDiscoverSchema,
   skillGetSchema,
   skillListSchema,
+  skillLoadSchema,
   skillPendingSchema,
   skillProposeSchema,
+  skillResourceGetSchema,
+  skillResourcesSchema,
   skillReviewRequestSchema,
   skillSearchSchema,
   skillValidateSchema,
@@ -60,6 +65,7 @@ export function createServer(
   learning?: LearningSignalService,
   authoring?: SkillAuthoringService,
   reviewQueue?: LearningReviewService,
+  retrieval?: SkillRetrievalService,
 ): McpServer {
   const server = new McpServer(
     { name: 'agentmind', version: '0.0.1' },
@@ -490,6 +496,48 @@ export function createServer(
         annotations: { readOnlyHint: true, openWorldHint: false },
       },
       (p) => run(() => reviewQueue.diff(p)),
+    );
+  }
+  if (retrieval) {
+    server.registerTool(
+      'skill_discover',
+      {
+        description:
+          'Compact active-only skill metadata discovery. Explicitly select a result; lexical ranking does not prove suitability. No skill content, installation or lifecycle action.',
+        inputSchema: skillDiscoverSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => retrieval.discover(p)),
+    );
+    server.registerTool(
+      'skill_load',
+      {
+        description:
+          'Load one canonical approved active SKILL.md, with optional expected version/digest. Continue next_offset for partial pages; partial instructions are not complete. Refresh discovery on stale pins.',
+        inputSchema: skillLoadSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => retrieval.load(p)),
+    );
+    server.registerTool(
+      'skill_resources',
+      {
+        description:
+          'List bounded canonical packaged resource metadata for one eligible active skill. Pin the version and digest. No filesystem reads.',
+        inputSchema: skillResourcesSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => retrieval.resources(p)),
+    );
+    server.registerTool(
+      'skill_resource_get',
+      {
+        description:
+          'Load only the named packaged Markdown resource for the exact active skill. No path outside the canonical package, execution or arbitrary file access. Continue next_offset until done.',
+        inputSchema: skillResourceGetSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => retrieval.resource(p)),
     );
   }
   return server;

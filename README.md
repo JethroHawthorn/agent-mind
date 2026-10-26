@@ -567,3 +567,20 @@ Run from the authorized project directory; use an absolute path to the CLI if th
 See [operator guide](docs/P3_005_REVIEW_QUEUE.md) for exact decision JSON, snapshot/dismissal policies, safe full-diff paging, protected broker configuration and approval handoff. See [implementation and verification report](docs/reviews/P3-005_IMPLEMENTATION.md) for current evidence and limitations.
 
 Review pagination includes explicit `page_status` and `exhausted` fields. Follow `next_offset` on `CONTINUE` even when `items` is empty; on `OFFSET_LIMIT_REACHED`, narrow filters and restart. The CLI prints continuation guidance to stderr. Run `node scripts/verify-authoring-codex.mjs --review` for an isolated native read-connectivity probe; this does not verify populated proposal review or approval. See [P3-005 remediation](docs/reviews/P3-005_REMEDIATION.md) for unresolved deployment and sandbox prerequisites.
+
+### P3-006 on-demand skill retrieval
+
+Enable `--enable-retrieval` on the MCP server for compact `skill_discover`, pinned active-only `skill_load`, `skill_resources` and `skill_resource_get`. Main instructions and packaged Markdown references load only after explicit selection. Every result passes existing approval/evaluation/source checks and complete package-hash verification. Retrieval never installs, executes or changes skill lifecycle state and records no telemetry.
+
+```sh
+pnpm build
+node packages/mcp-server/dist/skill-retrieve.js --project-root /absolute/project --db /absolute/registry.db --initialize
+node packages/mcp-server/dist/skill-retrieve.js --project-root /absolute/project --db /absolute/registry.db --discover 'retry sqlite' --limit 5 --json
+node packages/mcp-server/dist/skill-retrieve.js --project-root /absolute/project --db /absolute/registry.db --load SKILL_UUID --version ACTIVE_VERSION_UUID --digest PACKAGE_SHA256 --json
+```
+
+Run from the authorized project directory and use absolute CLI paths if it differs from the checkout. Initialization creates a derived version-metadata FTS5 index in an existing registry; subsequent CLI reads open it read-only. Follow content pages with the same version/digest pins, and refresh discovery on stale pins. Existing authoring inspection tools remain compatible and separate from active-only retrieval.
+
+The optional [Router Skill](skills/agentmind-router/SKILL.md) is supplied without installation. [Retrieval guide](docs/P3_006_RETRIEVAL.md) covers safe setup, budgets, resources and native acceptance. [Implementation report](docs/reviews/P3-006_IMPLEMENTATION.md) records actual quality metrics, benchmarks and regression results. Native Codex/Claude use, protected deployment and behavioral execution remain unverified here; MCP-delivered instructions are not native installed skills.
+
+P3-006 review hardening makes lexical-only matching and candidate limits explicit in discovery diagnostics. A no-match result is not proof that no relevant skill exists; reformulate at most once using task-grounded terms. Candidate verification remains capped at 50, while SQL sorting cost remains query-dependent. See [review remediation](docs/reviews/P3-006_REMEDIATION.md) for fixes and unresolved native/deployment prerequisites.
