@@ -36,6 +36,7 @@ import {
   skillResourceGetSchema,
   skillResourcesSchema,
   skillReviewRequestSchema,
+  skillRouteSchema,
   skillSearchSchema,
   skillValidateSchema,
   usageQuerySchema,
@@ -61,6 +62,7 @@ async function main() {
     },
   );
   const schemas = {
+    skill_route: skillRouteSchema,
     skill_discover: skillDiscoverSchema,
     skill_load: skillLoadSchema,
     skill_resources: skillResourcesSchema,

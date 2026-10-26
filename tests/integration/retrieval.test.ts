@@ -210,6 +210,24 @@ it('broker dispatch binds retrieval scope to authenticated principal (synthetic 
     { schema_version: 1, op: 'skill_discover', input: { query: 'retry sqlite' } },
   ) as { skills: { skill_id: string }[] };
   expect(r.skills.map((x) => x.skill_id)).toEqual([a.identity.id]);
+  const routeRequest = {
+    schema_version: 1,
+    op: 'skill_route',
+    input: { context: { summary: 'retry sqlite' } },
+  };
+  const routed = b.handle('agent', { uid: 203, gid: 20 }, routeRequest) as {
+    skills: { skill_id: string }[];
+    diagnostics: { cache_hit: boolean };
+  };
+  expect(routed.skills.map((x) => x.skill_id)).toEqual([a.identity.id]);
+  expect(
+    (b.handle('agent', { uid: 203, gid: 20 }, routeRequest) as typeof routed).diagnostics.cache_hit,
+  ).toBe(true);
+  expect(() => b.handle('agent', { uid: 999, gid: 20 }, routeRequest)).toThrow();
+  expect(() =>
+    b.handle('agent', { uid: 203, gid: 20 }, { ...routeRequest, project: 'foreign' }),
+  ).toThrow();
+
   expect(() =>
     b.handle(
       'agent',
@@ -228,4 +246,103 @@ it('broker dispatch binds retrieval scope to authenticated principal (synthetic 
       { schema_version: 1, op: 'distribution_sync', input: { skill_id: a.identity.id } },
     ),
   ).toThrow();
+});
+it('P3-008 A/B/C/D/G: routes compactly over actual MCP, caches computations and loads only explicitly selected resources', async () => {
+  const f = fixture();
+  const a = f.add({
+    ...draft,
+    resources: [{ path: 'references/note.md', content: 'SELECTIVE_REFERENCE_ONLY' }],
+  });
+  const c = await connect(f);
+  const request = { context: { summary: 'retry sqlite', languages: ['typescript'] }, limit: 5 };
+  const first = await call(c, 'skill_route', request),
+    second = await call(c, 'skill_route', request);
+  expect(first.skills[0].skill_id).toBe(a.identity.id);
+  expect(first.diagnostics.cache_hit).toBe(false);
+  expect(second.diagnostics.cache_hit).toBe(true);
+  expect(Buffer.byteLength(JSON.stringify(second))).toBeLessThanOrEqual(4096);
+  expect(JSON.stringify(second)).not.toContain('SELECTIVE_REFERENCE_ONLY');
+  expect(JSON.stringify(second)).not.toContain('# Procedure');
+  expect(
+    (await c.listTools()).tools.find((t) => t.name === 'skill_route')?.annotations?.readOnlyHint,
+  ).toBe(true);
+  const pin = {
+    skill_id: a.identity.id,
+    expected_version_id: a.version.id,
+    expected_digest: a.version.content_hash,
+  };
+  expect((await call(c, 'skill_load', pin)).version_id).toBe(a.version.id);
+  expect(
+    (await call(c, 'skill_resource_get', { ...pin, path: 'references/note.md' })).content,
+  ).toBe('SELECTIVE_REFERENCE_ONLY');
+  expect(
+    (await call(c, 'skill_route', { context: { summary: 'astronomy telescope optics' } })).outcome,
+  ).toBe('NO_MATCH');
+  f.add({ name: 'sqlite-reconnect', description: draft.description });
+  expect((await call(c, 'skill_route', { context: { summary: 'sqlite' } })).outcome).toBe(
+    'SHORTLIST',
+  );
+  expect(f.db.prepare('SELECT COUNT(*) n FROM skill_usage_events').get()).toEqual({ n: 0 });
+});
+it('P3-008 E/F: a warm MCP cache detects promotion and rollback by another process connection', async () => {
+  const f = fixture(),
+    a = f.add(draft),
+    c = await connect(f);
+  const request = { context: { summary: 'retry sqlite' } };
+  await call(c, 'skill_route', request);
+  expect((await call(c, 'skill_route', request)).diagnostics.cache_hit).toBe(true);
+  f.transition(a.identity.id, null, 'deactivate');
+  const b = f.add({
+    ...draft,
+    description: 'Retry SQLite startup busy errors with bounded recovery checks.',
+  });
+  const updated = await call(c, 'skill_route', request);
+  expect(updated.diagnostics.cache_hit).toBe(false);
+  expect(updated.skills[0].active_version_id).toBe(b.version.id);
+  const oldPin = {
+    skill_id: a.identity.id,
+    expected_version_id: a.version.id,
+    expected_digest: a.version.content_hash,
+  };
+  expect((await c.callTool({ name: 'skill_load', arguments: oldPin })).isError).toBe(true);
+  const transition = f.transition(a.identity.id, a.version.id, 'rollback');
+  f.audit(a.version.id, transition, 'rollback');
+  expect((await call(c, 'skill_route', request)).skills[0].active_version_id).toBe(a.version.id);
+  const foreign = await connect(f, f.otherScope.root);
+  expect((await call(foreign, 'skill_route', request)).skills).toEqual([]);
+  expect(
+    (
+      await c.callTool({
+        name: 'skill_route',
+        arguments: { ...request, project_id: f.otherScope.id },
+      })
+    ).isError,
+  ).toBe(true);
+});
+it('P3-008 CLI accepts bounded route JSON on stdin and refuses override flags and oversized input', () => {
+  const f = fixture(),
+    a = f.add(draft);
+  const run = (text: string, args: string[] = []) =>
+    spawnSync(
+      process.execPath,
+      [
+        resolve('packages/mcp-server/dist/skill-retrieve.js'),
+        '--project-root',
+        f.root,
+        '--db',
+        f.path,
+        '--route',
+        '--json',
+        ...args,
+      ],
+      { cwd: f.root, input: text, encoding: 'utf8', timeout: 10000 },
+    );
+  const r = run(JSON.stringify({ context: { summary: 'retry sqlite' } }));
+  expect(r.status).toBe(0);
+  expect(JSON.parse(r.stdout).skills[0].skill_id).toBe(a.identity.id);
+  expect(run('x'.repeat(2049)).status).toBe(1);
+  expect(run('{}', ['--force']).status).toBe(1);
+  expect(
+    run(JSON.stringify({ context: { summary: 'retry' }, project_id: f.otherScope.id })).status,
+  ).toBe(1);
 });

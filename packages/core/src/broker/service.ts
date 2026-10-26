@@ -50,6 +50,7 @@ const commitSchema = z.strictObject({
   review_digest: z.string().regex(/^[a-f0-9]{64}$/),
 });
 export const agentOperations = [
+  'skill_route',
   'skill_discover',
   'skill_load',
   'skill_resources',
@@ -95,6 +96,7 @@ export const agentOperations = [
 ] as const;
 
 export const operatorQueryOperations = [
+  'skill_route',
   'skill_discover',
   'skill_load',
   'skill_resources',
@@ -158,6 +160,7 @@ export function migrateBroker(db: Database.Database) {
   }).immediate();
 }
 export class BrokerService {
+  private readonly retrievalServices = new Map<string, SkillRetrievalService>();
   private readonly authoringSession = randomUUID();
   private readonly scopes;
   constructor(
@@ -207,8 +210,22 @@ export class BrokerService {
     const p = parsed.data;
     const auth = principal(this.config, channel, peer, p.project);
     const scope = required(this.scopes.get(auth.project.name));
-    if (['skill_discover', 'skill_load', 'skill_resources', 'skill_resource_get'].includes(p.op)) {
-      const retrieval = new SkillRetrievalService(this.db, scope);
+    if (
+      [
+        'skill_route',
+        'skill_discover',
+        'skill_load',
+        'skill_resources',
+        'skill_resource_get',
+      ].includes(p.op)
+    ) {
+      let retrieval = this.retrievalServices.get(scope.id);
+      if (!retrieval) {
+        retrieval = new SkillRetrievalService(this.db, scope);
+        if (this.retrievalServices.size >= 16) this.retrievalServices.clear();
+        this.retrievalServices.set(scope.id, retrieval);
+      }
+      if (p.op === 'skill_route') return retrieval.route(p.input);
       if (p.op === 'skill_discover') return retrieval.discover(p.input);
       if (p.op === 'skill_load') return retrieval.load(p.input);
       if (p.op === 'skill_resources') return retrieval.resources(p.input);

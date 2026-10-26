@@ -16,15 +16,18 @@ import {
 } from './model.js';
 import { contentPage, resourceDigest } from './projection.js';
 import { retrieveCandidates } from './ranking.js';
+import { SkillRouter } from './routing.js';
 
 /** No migration, filesystem access, telemetry writes or lifecycle writes occur in this service. */
 export class SkillRetrievalService {
   readonly #scope: ProjectScope;
   readonly #config: RetrievalConfig;
+  readonly #router: SkillRouter;
   constructor(
     private readonly db: Database.Database,
     scope: ProjectScope,
     config: unknown = {},
+    routingConfig: unknown = {},
   ) {
     this.#scope = Object.freeze({ ...scope });
     const parsed = retrievalConfigSchema.safeParse(config);
@@ -34,6 +37,25 @@ export class SkillRetrievalService {
         'Invalid trusted retrieval output limits.',
       );
     this.#config = Object.freeze(parsed.data);
+    this.#router = new SkillRouter(
+      db,
+      this.#scope,
+      this.#config.candidate_limit,
+      (id) => {
+        const a = this.artifact({ skill_id: id, offset: 0 });
+        return {
+          skill_id: a.review.identity.id,
+          name: a.review.identity.name,
+          description: a.review.version.description,
+          active_version_id: a.review.version.id,
+          content_digest: a.review.version.content_hash,
+        };
+      },
+      routingConfig,
+    );
+  }
+  route(input: unknown) {
+    return this.#router.route(input);
   }
   discover(input: unknown) {
     const p = parseRetrieval(skillDiscoverSchema, input),

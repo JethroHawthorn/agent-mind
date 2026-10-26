@@ -16,7 +16,7 @@
     "verify:cli": "node scripts/verify-cli.mjs",
     "verify:experience-cli": "node scripts/verify-cli.mjs --experiences",
     "verify:skills-cli": "node scripts/verify-skills.mjs",
-    "test:e2e": "pnpm build && vitest run tests/integration/learning-e2e.test.ts tests/unit/skills-evidence.test.ts tests/integration/continuous-learning.test.ts tests/unit/continuous-learning.test.ts",
+    "test:e2e": "pnpm build && vitest run tests/integration/learning-e2e.test.ts tests/unit/skills-evidence.test.ts tests/integration/continuous-learning.test.ts tests/unit/continuous-learning.test.ts tests/integration/retrieval.test.ts tests/unit/routing.test.ts tests/unit/routing-quality.test.ts",
     "skill:install": "node scripts/install-reflect.mjs",
     "lint": "biome check --error-on-warnings .",
     "format:check": "biome format .",
@@ -27,7 +27,8 @@
     "broker:deployment": "node scripts/broker-deployment.mjs",
     "verify:broker-os": "node scripts/verify-broker-os.mjs",
     "benchmark:duplicates": "pnpm build && vitest run tests/performance/duplicates.test.ts",
-    "verify:learning-cli": "node scripts/verify-continuous-learning.mjs"
+    "verify:learning-cli": "node scripts/verify-continuous-learning.mjs",
+    "benchmark:routing": "pnpm build && vitest run tests/performance/routing.test.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",

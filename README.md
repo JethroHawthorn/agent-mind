@@ -592,3 +592,12 @@ Run `pnpm test:e2e` for the disposable offline learning-loop scenarios and exist
 `pnpm verify:learning-cli --prepare` creates a disposable project; `--resume /returned/project --probe --native-timeout-seconds 40` attempts explicitly instructed native Codex capture. The probe never approves or installs skills. Native authoring/reuse require separate manual observation and the existing operator workflow. An incomplete or blocked probe exits 2 and remains NOT VERIFIED. Claude/Gemini native checks are deferred.
 
 See [acceptance and manual workflow](docs/CONTINUOUS_LEARNING_ACCEPTANCE.md) and [actual results and 30-requirement matrix](docs/reviews/P3-007_IMPLEMENTATION.md). P3-007 is not fully accepted: native reuse, verified behavioral upgrades and deployed OS authorization remain unverified; six native broker socket tests remain blocked/failing in this managed environment.
+
+
+### P3-008 context-aware routing
+
+With `--enable-retrieval`, `skill_route` adds a bounded task-context shortlist over the existing approved-active registry. Supply `context.summary`, optional known language/framework hints and literal exclusions; select explicitly, then reuse existing version/digest-pinned loading and resource tools. `skill_discover` remains compatible. No model call, telemetry, automatic load or lifecycle/distribution action occurs.
+
+The default routing response is at most 4,096 bytes with five results (hard maximum ten); clipped metadata is explicit. A bounded candidate cache skips repeated search computation while rechecking current authorization, active version, approval evidence and complete package integrity on every response. Cache hits do not by themselves save model tokens or tool calls.
+
+See [routing policy and CLI examples](docs/P3_008_ROUTING.md) and [measured implementation results](docs/reviews/P3-008_IMPLEMENTATION.md). Run `pnpm benchmark:routing` for disposable 100/1,000/5,000-skill measurements. The smaller repository router skill is optional and is not automatically installed. Native Codex routing/reuse and complete Phase 3 acceptance remain NOT VERIFIED; Claude/Gemini are deferred.

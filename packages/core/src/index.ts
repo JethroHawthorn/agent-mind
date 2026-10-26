@@ -28,6 +28,7 @@ export { confirmOperatorReview, type OperatorGrant } from './operator-confirmati
 export * from './privacy.js';
 export * from './project.js';
 export * from './retrieval/model.js';
+export * from './retrieval/routing-model.js';
 export * from './retrieval/service.js';
 export * from './retrieval/storage.js';
 export * from './schemas.js';

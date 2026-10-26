@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import {
   AgentMindError,
@@ -26,6 +27,7 @@ async function main() {
       project: { type: 'string' },
       initialize: { type: 'boolean' },
       discover: { type: 'string' },
+      route: { type: 'boolean' },
       load: { type: 'string' },
       resources: { type: 'string' },
       resource: { type: 'string' },
@@ -40,13 +42,13 @@ async function main() {
       json: { type: 'boolean' },
     },
   });
-  const action = ['initialize', 'discover', 'load', 'resources', 'resource'].filter(
+  const action = ['initialize', 'discover', 'load', 'resources', 'resource', 'route'].filter(
     (k) => values[k as keyof typeof values] !== undefined,
   );
   if (action.length !== 1)
     throw new AgentMindError(
       'RETRIEVAL_INVALID_INPUT',
-      'Choose one action: --initialize, --discover QUERY, --load ID, --resources ID or --resource ID --path MEMBER.',
+      'Choose one action: --initialize, --route (JSON stdin), --discover QUERY, --load ID, --resources ID or --resource ID --path MEMBER.',
     );
   if (
     (values.path && !values.resource) ||
@@ -72,7 +74,31 @@ async function main() {
   );
   let op = 'skill_load';
   let input: unknown = {};
-  if (values.discover) {
+  if (values.route) {
+    if (values.limit || values.offset || values.path || values.digest || values.version)
+      throw new AgentMindError(
+        'RETRIEVAL_INVALID_INPUT',
+        'Routing selectors belong in bounded JSON on stdin.',
+      );
+    const bytes = Buffer.alloc(2049);
+    let count = 0;
+    while (count < bytes.length) {
+      const n = readSync(0, bytes, count, bytes.length - count, null);
+      if (!n) break;
+      count += n;
+    }
+    if (count > 2048)
+      throw new AgentMindError('RETRIEVAL_INVALID_INPUT', 'Routing request exceeds 2048 bytes.');
+    try {
+      input = JSON.parse(bytes.subarray(0, count).toString('utf8'));
+    } catch {
+      throw new AgentMindError(
+        'RETRIEVAL_INVALID_INPUT',
+        'Routing requires a JSON request on stdin.',
+      );
+    }
+    op = 'skill_route';
+  } else if (values.discover) {
     op = 'skill_discover';
     input = { query: values.discover, ...(values.limit ? { limit: n(values.limit) } : {}) };
   } else if (!values.initialize) {
@@ -130,13 +156,15 @@ async function main() {
       } else {
         const s = new SkillRetrievalService(db, c.project, config);
         result =
-          op === 'skill_discover'
-            ? s.discover(input)
-            : op === 'skill_resources'
-              ? s.resources(input)
-              : op === 'skill_resource_get'
-                ? s.resource(input)
-                : s.load(input);
+          op === 'skill_route'
+            ? s.route(input)
+            : op === 'skill_discover'
+              ? s.discover(input)
+              : op === 'skill_resources'
+                ? s.resources(input)
+                : op === 'skill_resource_get'
+                  ? s.resource(input)
+                  : s.load(input);
       }
     } finally {
       db.close();

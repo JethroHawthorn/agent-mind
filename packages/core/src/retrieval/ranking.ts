@@ -87,7 +87,7 @@ export function buildRetrievalQuery(
  FROM skill_version_retrieval_fts f JOIN skill_versions v ON v.rowid=f.rowid AND v.id=f.version_id AND v.project_id=f.project_id
  JOIN skills k ON k.id=v.skill_id AND k.project_id=v.project_id AND k.active_version_id=v.id
  JOIN skill_version_states s ON s.version_id=v.id AND s.project_id=v.project_id AND s.status='approved'
- WHERE skill_version_retrieval_fts MATCH ? AND v.project_id=? AND f.project_id=?
+ WHERE skill_version_retrieval_fts MATCH ? AND v.project_id=? AND f.project_id=? AND f.name=k.name AND f.description=v.description
  ORDER BY exact_name DESC,name_hits DESC,description_hits DESC,k.name,k.id LIMIT ?`,
     parameters: [
       normalized.normalized,
