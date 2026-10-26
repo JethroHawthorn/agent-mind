@@ -5,6 +5,7 @@ import {
   MemoryService,
   openDatabase,
   RecommendationService,
+  SkillAuthoringService,
   SkillProposalService,
   SkillReviewService,
   SkillStore,
@@ -64,6 +65,9 @@ async function main(): Promise<void> {
             'explicit-mcp-v1',
             config.learningCaptureEnabled,
           )
+        : undefined,
+      config.authoringEnabled
+        ? new SkillAuthoringService(db, config.project, config.sourceAgent, config.proposalEnabled)
         : undefined,
     );
     const shutdown = createShutdown({

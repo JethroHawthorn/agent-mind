@@ -2,6 +2,12 @@
 import { parseArgs } from 'node:util';
 import {
   agentOperations,
+  authoringContextSchema,
+  authoringDiffSchema,
+  authoringEvaluateSchema,
+  authoringGetSchema,
+  authoringListSchema,
+  authoringSubmitSchema,
   brokerRequest,
   compareRequestSchema,
   curatorAnalyzeSchema,
@@ -49,6 +55,12 @@ async function main() {
     },
   );
   const schemas = {
+    skill_authoring_context: authoringContextSchema,
+    skill_authoring_submit: authoringSubmitSchema,
+    skill_authoring_get: authoringGetSchema,
+    skill_authoring_list: authoringListSchema,
+    skill_authoring_diff: authoringDiffSchema,
+    skill_authoring_evaluate: authoringEvaluateSchema,
     learning_signal_record: learningRecordSchema,
     learning_signal_get: learningIdSchema,
     learning_signals: learningListSchema,

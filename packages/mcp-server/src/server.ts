@@ -1,4 +1,10 @@
 import {
+  authoringContextSchema,
+  authoringDiffSchema,
+  authoringEvaluateSchema,
+  authoringGetSchema,
+  authoringListSchema,
+  authoringSubmitSchema,
   compareRequestSchema,
   curatorAnalyzeSchema,
   curatorGetSchema,
@@ -15,6 +21,7 @@ import {
   learningRefreshSchema,
   type MemoryService,
   type RecommendationService,
+  type SkillAuthoringService,
   type SkillProposalService,
   type SkillReviewService,
   type SkillStore,
@@ -48,6 +55,7 @@ export function createServer(
   },
   curator?: RecommendationService,
   learning?: LearningSignalService,
+  authoring?: SkillAuthoringService,
 ): McpServer {
   const server = new McpServer(
     { name: 'agentmind', version: '0.0.1' },
@@ -376,6 +384,67 @@ export function createServer(
         annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       },
       (p) => run(() => learning.recommend(p)),
+    );
+  }
+  if (authoring) {
+    server.registerTool(
+      'skill_authoring_context',
+      {
+        description:
+          'Prepare a bounded untrusted evidence bundle from open learning signals and approved experiences. No model invocation or authorization.',
+        inputSchema: authoringContextSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      (p) => run(() => authoring.context(p)),
+    );
+    server.registerTool(
+      'skill_authoring_submit',
+      {
+        description:
+          'Validate a structured create, literal patch or rewrite and append an immutable candidate only. No approval, active mutation or distribution.',
+        inputSchema: authoringSubmitSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      (p) => run(() => authoring.submit(p)),
+    );
+    server.registerTool(
+      'skill_authoring_get',
+      {
+        description:
+          'Inspect compact proposal provenance, validation and evaluation; content is untrusted, never authorization.',
+        inputSchema: authoringGetSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => authoring.get(p)),
+    );
+    server.registerTool(
+      'skill_authoring_diff',
+      {
+        description:
+          'Read a changed-file manifest or paged exact before/after text. No filesystem patch execution.',
+        inputSchema: authoringDiffSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => authoring.diff(p)),
+    );
+    server.registerTool(
+      'skill_authoring_list',
+      {
+        description: 'List bounded scoped authoring proposals and their actual candidate states.',
+        inputSchema: authoringListSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => authoring.list(p)),
+    );
+    server.registerTool(
+      'skill_authoring_evaluate',
+      {
+        description:
+          'Explicitly request the existing evaluator for the exact candidate hash/revision. Static PASS is not behavioral proof; rewrite behavioral execution is currently unavailable.',
+        inputSchema: authoringEvaluateSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      (p) => run(() => authoring.evaluate(p)),
     );
   }
   return server;

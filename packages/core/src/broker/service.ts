@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
+import { SkillAuthoringService } from '../authoring/service.js';
 import { RecommendationService } from '../curator/service.js';
 import { ExperienceService } from '../experience.js';
 import { experienceReviewSchema } from '../experience-schemas.js';
@@ -51,6 +52,12 @@ export const agentOperations = [
   'experience_record',
   'experience_search',
   'skill_propose',
+  'skill_authoring_context',
+  'skill_authoring_submit',
+  'skill_authoring_get',
+  'skill_authoring_list',
+  'skill_authoring_diff',
+  'skill_authoring_evaluate',
   'skill_get',
   'skill_list',
   'skill_search',
@@ -83,6 +90,9 @@ export const operatorQueryOperations = [
   'skill_list',
   'skill_search',
   'skill_pending',
+  'skill_authoring_get',
+  'skill_authoring_list',
+  'skill_authoring_diff',
   'skill_review',
   'skill_diff',
   'skill_evaluation',
@@ -128,6 +138,7 @@ export function migrateBroker(db: Database.Database) {
   }).immediate();
 }
 export class BrokerService {
+  private readonly authoringSession = randomUUID();
   private readonly scopes;
   constructor(
     private readonly db: Database.Database,
@@ -184,6 +195,30 @@ export class BrokerService {
         authorization: 'os-peer-operator-v2',
         deployment_acceptance: 'NOT VERIFIED',
       };
+    if (
+      [
+        'skill_authoring_context',
+        'skill_authoring_submit',
+        'skill_authoring_get',
+        'skill_authoring_list',
+        'skill_authoring_diff',
+        'skill_authoring_evaluate',
+      ].includes(p.op)
+    ) {
+      const authoring = new SkillAuthoringService(
+        this.db,
+        scope,
+        auth.source,
+        true,
+        `${this.authoringSession}:${peer.uid}`,
+      );
+      if (p.op === 'skill_authoring_context') return authoring.context(p.input);
+      if (p.op === 'skill_authoring_submit') return authoring.submit(p.input);
+      if (p.op === 'skill_authoring_get') return authoring.get(p.input);
+      if (p.op === 'skill_authoring_list') return authoring.list(p.input ?? {});
+      if (p.op === 'skill_authoring_diff') return authoring.diff(p.input);
+      return authoring.evaluate(p.input);
+    }
     if (
       [
         'learning_signal_record',

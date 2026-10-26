@@ -537,3 +537,16 @@ node /absolute/agent-mind/packages/mcp-server/dist/learning.js --project-root "$
 ```
 
 See [capture schemas, trust policy, commands and Codex setup](docs/P3_003_LEARNING.md), the [optional 510-byte capture hint](docs/LEARNING_CAPTURE_HINT.md), and [actual implementation and verification results](docs/reviews/P3-003_IMPLEMENTATION.md). Native Codex capture remains NOT VERIFIED after a local-state permission failure; authenticated Claude validation is deferred. SDK integration and native verification are reported separately.
+
+## P3-004 authoring and patch proposals
+
+Opt-in `--enable-authoring` adds bounded evidence contexts and structured CREATE_NEW, PATCH_EXISTING and REWRITE_EXISTING submissions. Core reuses P2-002 to append an immutable candidate, binds patches to exact package/file digests and rejects stale contexts. Active versions, approval policy and distribution remain unchanged. The current coding agent drafts content; no separate model API or mandatory additional inference is introduced.
+
+```sh
+pnpm build
+# Run from the authorized project; JSON inputs contain existing scoped source IDs.
+node /absolute/agent-mind/packages/mcp-server/dist/authoring.js --project-root "$PWD" --db /absolute/existing/registry.db --context < context-request.json
+node /absolute/agent-mind/packages/mcp-server/dist/authoring.js --project-root "$PWD" --db /absolute/existing/registry.db --source-agent codex --session reviewed-task --submit < structured-proposal.json
+```
+
+See [schemas, MCP/CLI workflow, literal patches, budgets and limitations](docs/P3_004_AUTHORING.md) and [implementation/test evidence](docs/reviews/P3-004_IMPLEMENTATION.md). Static PASS is not behavioral proof. Rewrite evaluation through this helper requires currently unavailable behavioral execution, and no authoring response grants approval or activation authority. Native Codex MCP read and complete authoring remain NOT VERIFIED after local-state permission failure; Claude authenticated testing remains deferred.

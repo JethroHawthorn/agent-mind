@@ -432,3 +432,24 @@ it('scopes learning capture/detection and exposes no human-attestation or lifecy
     expect(() => f.call(op, { signal_id: r.id })).toThrow();
   expect(f.call('learning_signal_detect')).toMatchObject({ advisory_only: true });
 });
+it('scopes authoring context and proposal reads and exposes no privileged authoring operation', () => {
+  const f = fixture();
+  f.record();
+  expect(() =>
+    f.call('skill_authoring_context', {
+      signal_ids: ['00000000-0000-4000-a000-000000000001'],
+      experience_ids: ['00000000-0000-4000-a000-000000000002'],
+      query: 'clamp bounds',
+    }),
+  ).toThrow();
+  expect(() =>
+    f.call('skill_authoring_get', { proposal_id: '00000000-0000-4000-a000-000000000001' }, 205),
+  ).toThrow();
+  for (const op of [
+    'skill_authoring_approve',
+    'skill_authoring_promote',
+    'skill_authoring_install',
+  ])
+    expect(() => f.call(op, {})).toThrow();
+  expect(f.call('skill_authoring_list')).toMatchObject({ proposals: [] });
+});

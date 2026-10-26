@@ -1,3 +1,6 @@
+export * from './authoring/model.js';
+export * from './authoring/service.js';
+export * from './authoring/storage.js';
 export * from './behavioral/model.js';
 export * from './behavioral/storage.js';
 export * from './broker/client.js';
