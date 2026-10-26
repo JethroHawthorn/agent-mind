@@ -507,3 +507,17 @@ node packages/mcp-server/dist/curator.js --project-root /absolute/project --db /
 ```
 
 See [rules, trust, scope, lifecycle, limits and commands](docs/P3_001_ADVISORY.md) and [P3-001 implementation and test results](docs/reviews/P3-001_IMPLEMENTATION.md). SEC-01 protected deployment and BE-001 behavioral execution remain unverified; autonomous approval, promotion and distribution are not enabled.
+
+## P3-002 duplicate, overlap and conflict analysis
+
+The existing advisory curator now compares immutable skill packages using bounded deterministic retrieval, canonical fingerprints, token/shingle overlap, workflow sections and conservative mandatory-instruction polarity checks. Default scope is approved versions in the authorized project. Candidate/inactive inspection is explicit. Findings never authorize consolidation or any lifecycle/distribution operation.
+
+```sh
+# Build in the repository, then launch from inside the configured project.
+pnpm build
+node /absolute/agent-mind/packages/mcp-server/dist/curator.js --project-root "$PWD" --db /absolute/existing/registry.db --duplicates
+node /absolute/agent-mind/packages/mcp-server/dist/curator.js --project-root "$PWD" --db /absolute/existing/registry.db --compare LEFT_VERSION_UUID --against RIGHT_VERSION_UUID
+pnpm benchmark:duplicates
+```
+
+Existing opt-in MCP adds `curator_duplicates` and read-only `curator_compare`; recommendation listing supports classification filters. No model calls or API keys are required. High similarity is not proof of safe interchangeability, and bounded retrieval can miss matches. See [eligibility, algorithms, caching, commands and limits](docs/P3_002_DUPLICATES.md) and [implementation/results](docs/reviews/P3-002_IMPLEMENTATION.md).

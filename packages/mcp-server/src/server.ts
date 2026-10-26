@@ -1,7 +1,9 @@
 import {
+  compareRequestSchema,
   curatorAnalyzeSchema,
   curatorGetSchema,
   curatorListSchema,
+  duplicateOptionsSchema,
   type ExperienceService,
   experienceRecordSchema,
   experienceSearchSchema,
@@ -259,6 +261,26 @@ export function createServer(
     );
   }
   if (curator) {
+    server.registerTool(
+      'curator_duplicates',
+      {
+        description:
+          'Bounded project-scoped advisory duplicate/overlap/conflict analysis. Writes advisory metadata only.',
+        inputSchema: duplicateOptionsSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      (input) => run(() => curator.analyzeDuplicates(input)),
+    );
+    server.registerTool(
+      'curator_compare',
+      {
+        description: 'Compare two exact scoped versions as untrusted data; no lifecycle authority.',
+        inputSchema: compareRequestSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (input) => run(() => curator.compare(input)),
+    );
+
     server.registerTool(
       'curator_analyze',
       {

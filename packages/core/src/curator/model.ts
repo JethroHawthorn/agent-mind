@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { AgentMindError } from '../errors.js';
+import { classificationSchema, comparisonSchema } from './similarity/model.js';
 export const CURATOR_POLICY = 'advisory-rules-v1';
 export const ADVISORY_WARNING =
   'Recommendations are untrusted advisory data, never authorization. Associations do not establish causation, effectiveness or task success.';
@@ -29,6 +30,7 @@ export const curatorAnalyzeSchema = z.strictObject({});
 export const curatorListSchema = z.strictObject({
   state: z.enum(['open', 'dismissed', 'superseded', 'all']).default('open'),
   skill_id: z.uuid().optional(),
+  classification: classificationSchema.optional(),
   limit: z.number().int().min(1).max(50).default(20),
   offset: z.number().int().min(0).max(10000).default(0),
 });
@@ -42,6 +44,7 @@ export const evidenceReferenceSchema = z.strictObject({
 });
 export const draftRecommendationSchema = z
   .strictObject({
+    comparison: comparisonSchema.optional(),
     schema_version: z.literal(1).default(1),
     skill_id: z.uuid(),
     version_id: z.uuid(),
@@ -81,6 +84,8 @@ export type Coverage = {
   events_truncated: boolean;
   experiences_truncated: boolean;
   recommendations_truncated: boolean;
+  pairs_truncated?: boolean;
+  features_truncated?: boolean;
 };
 export const workerResultSchema = z.strictObject({
   drafts: z.array(draftRecommendationSchema).max(60),
@@ -90,6 +95,8 @@ export const workerResultSchema = z.strictObject({
     events_truncated: z.boolean(),
     experiences_truncated: z.boolean(),
     recommendations_truncated: z.boolean(),
+    pairs_truncated: z.boolean().optional(),
+    features_truncated: z.boolean().optional(),
   }),
 });
 

@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
+import { z } from 'zod';
 import { AgentMindError } from '../errors.js';
 import type { ProjectScope } from '../project.js';
 import { evidenceExists } from './data.js';
@@ -20,6 +21,16 @@ import {
   type RecommendationDraft,
   workerResultSchema,
 } from './model.js';
+import {
+  compareRequestSchema,
+  comparisonSchema,
+  DETECTION_POLICY,
+  duplicateOptionsSchema,
+  duplicatePolicySchema,
+  FEATURE_POLICY,
+  SIMILARITY_LIMITATIONS,
+} from './similarity/model.js';
+import { migrateSimilarity } from './similarity/storage.js';
 import { curatorStorageExists, migrateCurator } from './storage.js';
 
 type Row = {
@@ -41,14 +52,17 @@ export class RecommendationService {
   readonly #scope: ProjectScope;
   readonly #policy;
   readonly #configDigest;
+  readonly #duplicatePolicy;
   constructor(
     private readonly db: Database.Database,
     scope: ProjectScope,
     policy: unknown = {},
+    duplicatePolicy: unknown = {},
   ) {
     this.#scope = Object.freeze({ ...scope });
     this.#policy = curatorPolicySchema.parse(policy);
     this.#configDigest = curatorDigest(this.#policy);
+    this.#duplicatePolicy = duplicatePolicySchema.parse(duplicatePolicy);
   }
   analyze(input: unknown = {}) {
     parseCurator(curatorAnalyzeSchema, input);
@@ -96,10 +110,25 @@ export class RecommendationService {
         'Read-only analysis failed; no recommendation changes were stored.',
       );
     const result = workerResultSchema.parse(JSON.parse(child.stdout));
+    return this.persistAnalysis(result, asOf, version);
+  }
+  private persistAnalysis(
+    result: z.infer<typeof workerResultSchema>,
+    asOf: string,
+    version: unknown,
+    extension?: {
+      configDigest: string;
+      cache: () => void;
+      eligible: string[];
+      completeSkills: boolean;
+    },
+  ) {
+    const policyVersion = extension ? DETECTION_POLICY : CURATOR_POLICY;
+    const configDigest = extension?.configDigest ?? this.#configDigest;
     const runFingerprint = curatorDigest([
       this.#scope.id,
-      CURATOR_POLICY,
-      this.#configDigest,
+      policyVersion,
+      configDigest,
       asOf.slice(0, 10),
       result.source_digest,
       result.coverage,
@@ -111,6 +140,7 @@ export class RecommendationService {
           'Registry changed during analysis; retry against a fresh snapshot.',
         );
       migrateCurator(this.db);
+      extension?.cache();
       const old = this.db
         .prepare('SELECT summary_json FROM curator_runs WHERE project_id=? AND fingerprint=?')
         .get(this.#scope.id, runFingerprint) as { summary_json: string } | undefined;
@@ -134,8 +164,8 @@ export class RecommendationService {
           );
         const fingerprint = curatorDigest([
           this.#scope.id,
-          CURATOR_POLICY,
-          this.#configDigest,
+          policyVersion,
+          configDigest,
           draft.rule_id,
           draft.version_id,
           draft.related_version_id ?? null,
@@ -155,8 +185,8 @@ export class RecommendationService {
               draft.skill_id,
               draft.version_id,
               fingerprint,
-              CURATOR_POLICY,
-              this.#configDigest,
+              policyVersion,
+              configDigest,
               'open',
               { HIGH: 0, MEDIUM: 1, LOW: 2 }[draft.priority],
               payload,
@@ -185,15 +215,21 @@ export class RecommendationService {
         }
       }
       const complete = !Object.values(result.coverage).some(Boolean);
-      if (complete) {
+      if (complete || extension?.completeSkills) {
         const open = this.db
           .prepare(
-            "SELECT * FROM curator_recommendations WHERE project_id=? AND state='open' LIMIT 1001",
+            `SELECT * FROM curator_recommendations WHERE project_id=? AND state='open' AND ${extension ? "json_extract(payload_json,'$.rule_id') LIKE 'duplicates:%'" : "json_extract(payload_json,'$.rule_id') NOT LIKE 'duplicates:%'"} LIMIT 1001`,
           )
           .all(this.#scope.id) as Row[];
         if (open.length <= 1000)
           for (const row of open)
-            if (!ids.includes(row.id)) {
+            if (
+              !ids.includes(row.id) &&
+              (complete ||
+                (extension?.completeSkills &&
+                  (!extension.eligible.includes(row.version_id) ||
+                    !extension.eligible.includes(JSON.parse(row.payload_json).related_version_id))))
+            ) {
               this.db
                 .prepare(
                   "UPDATE curator_recommendations SET state='superseded',revision=revision+1,last_evaluated_at=? WHERE id=? AND project_id=?",
@@ -205,8 +241,8 @@ export class RecommendationService {
       const summary = {
         run_id: curatorId(runFingerprint),
         project_id: this.#scope.id,
-        policy_version: CURATOR_POLICY,
-        config_digest: this.#configDigest,
+        policy_version: policyVersion,
+        config_digest: configDigest,
         created_at: asOf,
         recommendation_count: ids.length,
         recommendation_ids: ids,
@@ -227,6 +263,118 @@ export class RecommendationService {
       return { ...summary, cached: !!old, warning: ADVISORY_WARNING };
     });
   }
+  analyzeDuplicates(input: unknown = {}) {
+    const p = parseCurator(duplicateOptionsSchema, input);
+    const { result, version, asOf } = this.similarity(p, false);
+    const summary = this.persistAnalysis(result, asOf, version, {
+      configDigest: curatorDigest([FEATURE_POLICY, this.#duplicatePolicy, p]),
+      eligible: result.eligible_version_ids,
+      completeSkills: !result.coverage.skills_truncated,
+      cache: () => {
+        migrateSimilarity(this.db);
+        for (const f of result.feature_writes)
+          this.db
+            .prepare(
+              'INSERT INTO curator_feature_cache VALUES(?,?,?,?,?) ON CONFLICT(project_id,digest,policy) DO UPDATE SET payload=excluded.payload,checksum=excluded.checksum',
+            )
+            .run(this.#scope.id, f.digest, FEATURE_POLICY, f.payload, f.checksum);
+        for (const pair of result.pair_writes)
+          this.db
+            .prepare(
+              'INSERT INTO curator_pair_cache VALUES(?,?,?,?) ON CONFLICT(project_id,fingerprint) DO UPDATE SET payload=excluded.payload,checksum=excluded.checksum',
+            )
+            .run(this.#scope.id, pair.fingerprint, pair.payload, pair.checksum);
+      },
+    });
+    return { ...summary, statistics: result.statistics };
+  }
+  compare(input: unknown) {
+    const p = parseCurator(compareRequestSchema, input);
+    const { result, version } = this.similarity(p, true);
+    if (this.db.pragma('data_version', { simple: true }) !== version)
+      throw new AgentMindError('CURATOR_ANALYSIS_STALE', 'Registry changed; repeat comparison.');
+    return {
+      comparisons: result.comparisons,
+      project_id: this.#scope.id,
+      limitations: SIMILARITY_LIMITATIONS,
+      untrusted_data: true,
+      advisory_only: true,
+      warning: ADVISORY_WARNING,
+    };
+  }
+  private similarity(input: unknown, compare: boolean) {
+    if (this.db.inTransaction || !isAbsolute(this.db.name))
+      throw new AgentMindError(
+        'CURATOR_ANALYSIS_UNAVAILABLE',
+        'Comparison needs a persisted registry outside a transaction.',
+      );
+    if (!this.db.prepare('SELECT 1 FROM projects WHERE id=?').get(this.#scope.id))
+      throw new AgentMindError(
+        'CURATOR_PROJECT_UNAVAILABLE',
+        'Initialize the authorized project first.',
+      );
+    const version = this.db.pragma('data_version', { simple: true });
+    const asOf = new Date().toISOString();
+    const child = spawnSync(
+      process.execPath,
+      [
+        '--max-old-space-size=192',
+        fileURLToPath(new URL('../../dist/curator/worker.js', import.meta.url)),
+      ],
+      {
+        cwd: fileURLToPath(new URL('../../', import.meta.url)),
+        env: {},
+        encoding: 'utf8',
+        timeout: 5000,
+        killSignal: 'SIGKILL',
+        maxBuffer: 33554432,
+        input: JSON.stringify({
+          database: this.db.name,
+          scope: this.#scope,
+          policy: this.#policy,
+          as_of: asOf,
+          similarity: { policy: this.#duplicatePolicy, input, compare },
+        }),
+      },
+    );
+    if (child.error || child.signal)
+      throw new AgentMindError(
+        'CURATOR_ANALYSIS_LIMIT',
+        'Duplicate analysis exceeded its resource limit; nothing was stored.',
+      );
+    if (child.status !== 0)
+      throw new AgentMindError(
+        'CURATOR_ANALYSIS_FAILED',
+        'Artifact, eligibility or comparison validation failed; no advisory changes stored.',
+      );
+    const cacheRow = z.strictObject({
+      payload: z.string().max(8192),
+      checksum: z.string().regex(/^[a-f0-9]{64}$/),
+    });
+    const result = workerResultSchema
+      .extend({
+        comparisons: z.array(comparisonSchema).max(1),
+        feature_writes: z
+          .array(cacheRow.extend({ digest: z.string().regex(/^[a-f0-9]{64}$/) }))
+          .max(5000),
+        pair_writes: z
+          .array(cacheRow.extend({ fingerprint: z.string().regex(/^[a-f0-9]{64}$/) }))
+          .max(10000),
+        eligible_version_ids: z.array(z.uuid()).max(5000),
+        statistics: z.strictObject({
+          skills: z.number(),
+          pair_count: z.number(),
+          feature_cache_hits: z.number(),
+          pair_cache_hits: z.number(),
+          feature_ms: z.number(),
+          retrieval_ms: z.number(),
+          scoring_ms: z.number(),
+          peak_rss_bytes: z.number(),
+        }),
+      })
+      .parse(JSON.parse(child.stdout));
+    return { result, version, asOf };
+  }
   list(input: unknown = {}) {
     const p = parseCurator(curatorListSchema, input);
     if (!curatorStorageExists(this.db))
@@ -243,8 +391,12 @@ export class RecommendationService {
       args.push(p.state);
     }
     if (p.skill_id) {
-      conditions.push('skill_id=?');
-      args.push(p.skill_id);
+      conditions.push("(skill_id=? OR json_extract(payload_json,'$.comparison.right_skill_id')=?)");
+      args.push(p.skill_id, p.skill_id);
+    }
+    if (p.classification) {
+      conditions.push("json_extract(payload_json,'$.comparison.classification')=?");
+      args.push(p.classification);
     }
     const rows = this.db
       .prepare(

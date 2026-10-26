@@ -25,7 +25,8 @@
     "build:peer": "node scripts/build-peer.mjs",
     "test:broker": "pnpm build && native/bin/agentmind-peer selftest && vitest run tests/unit/broker.test.ts tests/unit/broker-publication.test.ts tests/unit/broker-deployment.test.ts tests/integration/broker-native.test.ts",
     "broker:deployment": "node scripts/broker-deployment.mjs",
-    "verify:broker-os": "node scripts/verify-broker-os.mjs"
+    "verify:broker-os": "node scripts/verify-broker-os.mjs",
+    "benchmark:duplicates": "pnpm build && vitest run tests/performance/duplicates.test.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",

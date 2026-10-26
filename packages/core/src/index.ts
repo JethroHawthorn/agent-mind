@@ -6,6 +6,7 @@ export * from './broker/publication.js';
 export * from './broker/service.js';
 export * from './curator/model.js';
 export * from './curator/service.js';
+export * from './curator/similarity/model.js';
 export * from './curator/storage.js';
 export * from './database.js';
 export * from './errors.js';

@@ -3,9 +3,11 @@ import { parseArgs } from 'node:util';
 import {
   agentOperations,
   brokerRequest,
+  compareRequestSchema,
   curatorAnalyzeSchema,
   curatorGetSchema,
   curatorListSchema,
+  duplicateOptionsSchema,
   experienceRecordSchema,
   experienceSearchSchema,
   loadBrokerClient,
@@ -43,6 +45,8 @@ async function main() {
   );
   const schemas = {
     curator_analyze: curatorAnalyzeSchema,
+    curator_duplicates: duplicateOptionsSchema,
+    curator_compare: compareRequestSchema,
     curator_recommendations: curatorListSchema,
     curator_recommendation_get: curatorGetSchema,
     memory_save: saveSchema,

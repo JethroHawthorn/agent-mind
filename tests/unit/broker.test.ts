@@ -382,3 +382,30 @@ it('keeps curator analysis advisory and scoped through broker authorization', ()
     active_version_id: null,
   });
 });
+it('allows only scoped advisory duplicate operations through broker dispatch', () => {
+  const f = fixture();
+  const a = f.candidate();
+  expect(f.call('curator_duplicates')).toMatchObject({
+    advisory_only: true,
+    recommendation_count: 0,
+  });
+  expect(() =>
+    f.call('curator_compare', { left_version_id: a.version.id, right_version_id: a.version.id }),
+  ).toThrow();
+  expect(
+    f.call('curator_compare', {
+      left_version_id: a.version.id,
+      right_version_id: a.version.id,
+      include_candidates: true,
+    }),
+  ).toMatchObject({ advisory_only: true, comparisons: [{ classification: 'NOT_RELATED' }] });
+  expect(() =>
+    f.call(
+      'curator_compare',
+      { left_version_id: a.version.id, right_version_id: a.version.id, include_candidates: true },
+      205,
+    ),
+  ).toThrow();
+  for (const op of ['curator_merge', 'curator_delete', 'curator_consolidate'])
+    expect(() => f.call(op)).toThrow();
+});

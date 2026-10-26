@@ -63,8 +63,10 @@ export const agentOperations = [
   'skill_usage_query',
   'skill_usage_summary',
   'curator_analyze',
+  'curator_duplicates',
   'curator_recommendations',
   'curator_recommendation_get',
+  'curator_compare',
 ] as const;
 
 export const operatorQueryOperations = [
@@ -81,6 +83,7 @@ export const operatorQueryOperations = [
   'skill_usage_summary',
   'curator_recommendations',
   'curator_recommendation_get',
+  'curator_compare',
 ] as const;
 
 /** Broker extension schema v2 lives in the SAME registry transaction domain; core schema stays v9. */
@@ -173,9 +176,17 @@ export class BrokerService {
         deployment_acceptance: 'NOT VERIFIED',
       };
     if (
-      ['curator_analyze', 'curator_recommendations', 'curator_recommendation_get'].includes(p.op)
+      [
+        'curator_analyze',
+        'curator_recommendations',
+        'curator_recommendation_get',
+        'curator_duplicates',
+        'curator_compare',
+      ].includes(p.op)
     ) {
       const curator = new RecommendationService(this.db, scope);
+      if (p.op === 'curator_duplicates') return curator.analyzeDuplicates(p.input ?? {});
+      if (p.op === 'curator_compare') return curator.compare(p.input);
       if (p.op === 'curator_analyze') return curator.analyze(p.input ?? {});
       if (p.op === 'curator_recommendations') return curator.list(p.input ?? {});
       return curator.get(p.input);

@@ -5,6 +5,8 @@ import { openDatabaseReadOnly } from '../database.js';
 import { collectCuratorEvidence } from './data.js';
 import { curatorDigest, curatorPolicySchema, workerResultSchema } from './model.js';
 import { generateCuratorRecommendations } from './rules.js';
+import { duplicatePolicySchema } from './similarity/model.js';
+import { runSimilarity } from './similarity/pipeline.js';
 
 try {
   const input = readFileSync(0, 'utf8');
@@ -15,6 +17,9 @@ try {
       scope: z.strictObject({ id: z.string().regex(/^[a-f0-9]{64}$/), root: z.string().max(4096) }),
       policy: curatorPolicySchema,
       as_of: z.iso.datetime(),
+      similarity: z
+        .strictObject({ policy: duplicatePolicySchema, input: z.unknown(), compare: z.boolean() })
+        .optional(),
     })
     .parse(JSON.parse(input));
   const db = openDatabaseReadOnly(p.database);
@@ -23,6 +28,14 @@ try {
   db.pragma('mmap_size=0');
   try {
     const result = db.transaction(() => {
+      if (p.similarity)
+        return runSimilarity(
+          db,
+          p.scope,
+          p.similarity.policy,
+          p.similarity.input,
+          p.similarity.compare,
+        );
       const collection = collectCuratorEvidence(db, p.scope, p.policy);
       const source_digest = curatorDigest(collection);
       const drafts = generateCuratorRecommendations(collection, p.policy, p.as_of);
