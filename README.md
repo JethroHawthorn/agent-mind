@@ -601,3 +601,11 @@ With `--enable-retrieval`, `skill_route` adds a bounded task-context shortlist o
 The default routing response is at most 4,096 bytes with five results (hard maximum ten); clipped metadata is explicit. A bounded candidate cache skips repeated search computation while rechecking current authorization, active version, approval evidence and complete package integrity on every response. Cache hits do not by themselves save model tokens or tool calls.
 
 See [routing policy and CLI examples](docs/P3_008_ROUTING.md) and [measured implementation results](docs/reviews/P3-008_IMPLEMENTATION.md). Run `pnpm benchmark:routing` for disposable 100/1,000/5,000-skill measurements. The smaller repository router skill is optional and is not automatically installed. Native Codex routing/reuse and complete Phase 3 acceptance remain NOT VERIFIED; Claude/Gemini are deferred.
+
+### P4-001 Codex daily workflow
+
+Build once, then preview project-local integration with `pnpm codex setup --scope project --project-root /absolute/project --db /absolute/private/agentmind.db --dry-run`. Apply with an explicit `--apply` only after reviewing it. The setup preserves unrelated TOML, adds a small native router and leaves AGENTS.md/global Codex configuration untouched. `status`, `doctor [--connect]` and `uninstall [--dry-run | --apply]` use the same command prefix. User-scope setup is intentionally unsupported.
+
+The adapter reuses AgentMind's existing MCP runtime and scope/approval/integrity checks. It enables compact knowledge retrieval, meaningful lower-trust learning capture and eligible immutable proposals; human review and approval stay separate. No hooks, daemon, automatic approval or skill distribution are added.
+
+See [setup, daily use and recovery](docs/CODEX_DAILY_WORKFLOW.md) and [actual P4-001 verification](docs/reviews/P4-001_IMPLEMENTATION.md). Offline workflow and real CLI configuration/router discovery are distinct from authenticated native behavior, which remains NOT VERIFIED in this managed environment.

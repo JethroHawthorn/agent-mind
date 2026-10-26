@@ -7,6 +7,7 @@ export * from './broker/client.js';
 export * from './broker/policy.js';
 export * from './broker/publication.js';
 export * from './broker/service.js';
+export * from './codex-enrollment.js';
 export * from './curator/model.js';
 export * from './curator/service.js';
 export * from './curator/similarity/model.js';

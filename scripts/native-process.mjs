@@ -122,10 +122,12 @@ export function nativeProcess(command, args, root, timeoutMs = 40000) {
     });
   });
 }
-export function discoverCodex(root, name, path) {
+/** @param {Record<string, string | undefined> | undefined} [env] */
+export function discoverCodex(root, name, path, env = undefined) {
   return new Promise((resolve) => {
     const c = spawn('codex', ['app-server', '--stdio'], {
       cwd: root,
+      env,
       detached: process.platform !== 'win32',
       stdio: ['pipe', 'pipe', 'pipe'],
     });
