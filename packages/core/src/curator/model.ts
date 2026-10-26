@@ -39,7 +39,7 @@ export const curatorDismissSchema = curatorGetSchema.extend({
   expected_revision: z.number().int().nonnegative(),
 });
 export const evidenceReferenceSchema = z.strictObject({
-  kind: z.enum(['usage', 'experience', 'evaluation', 'skill_version']),
+  kind: z.enum(['usage', 'experience', 'evaluation', 'skill_version', 'learning_signal']),
   id: z.uuid(),
 });
 export const draftRecommendationSchema = z

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { RecommendationService } from '../curator/service.js';
 import { ExperienceService } from '../experience.js';
 import { experienceReviewSchema } from '../experience-schemas.js';
+import { LearningSignalService } from '../learning/service.js';
 import { MemoryService } from '../memory.js';
 import { issueBrokerGrant, reviewDigest } from '../operator-confirmation.js';
 import { assertSafeSummary } from '../privacy.js';
@@ -63,6 +64,12 @@ export const agentOperations = [
   'skill_usage_query',
   'skill_usage_summary',
   'curator_analyze',
+  'learning_signal_record',
+  'learning_signal_get',
+  'learning_signals',
+  'learning_signal_detect',
+  'learning_signal_refresh',
+  'learning_signal_recommend',
   'curator_duplicates',
   'curator_recommendations',
   'curator_recommendation_get',
@@ -81,6 +88,8 @@ export const operatorQueryOperations = [
   'skill_evaluation',
   'skill_usage_query',
   'skill_usage_summary',
+  'learning_signal_get',
+  'learning_signals',
   'curator_recommendations',
   'curator_recommendation_get',
   'curator_compare',
@@ -175,6 +184,24 @@ export class BrokerService {
         authorization: 'os-peer-operator-v2',
         deployment_acceptance: 'NOT VERIFIED',
       };
+    if (
+      [
+        'learning_signal_record',
+        'learning_signal_get',
+        'learning_signals',
+        'learning_signal_detect',
+        'learning_signal_refresh',
+        'learning_signal_recommend',
+      ].includes(p.op)
+    ) {
+      const learning = new LearningSignalService(this.db, scope, auth.source);
+      if (p.op === 'learning_signal_record') return learning.record(p.input);
+      if (p.op === 'learning_signal_get') return learning.get(p.input);
+      if (p.op === 'learning_signals') return learning.list(p.input ?? {});
+      if (p.op === 'learning_signal_detect') return learning.detect(p.input ?? {});
+      if (p.op === 'learning_signal_refresh') return learning.refresh(p.input);
+      return learning.recommend(p.input);
+    }
     if (
       [
         'curator_analyze',

@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { AgentMindError } from '../errors.js';
+import { assessLearning } from '../learning/evidence.js';
+import { LEARNING_POLICY, type LearningSignal } from '../learning/model.js';
+import { learningStorageExists } from '../learning/storage.js';
 import type { ProjectScope } from '../project.js';
 import { evidenceExists } from './data.js';
 import {
@@ -121,9 +124,12 @@ export class RecommendationService {
       cache: () => void;
       eligible: string[];
       completeSkills: boolean;
+      policyVersion?: string;
+      preserveOthers?: boolean;
     },
   ) {
-    const policyVersion = extension ? DETECTION_POLICY : CURATOR_POLICY;
+    const policyVersion =
+      extension?.policyVersion ?? (extension ? DETECTION_POLICY : CURATOR_POLICY);
     const configDigest = extension?.configDigest ?? this.#configDigest;
     const runFingerprint = curatorDigest([
       this.#scope.id,
@@ -214,11 +220,11 @@ export class RecommendationService {
           if (changed) this.history(id, current.revision + 1, state, payload, asOf);
         }
       }
-      const complete = !Object.values(result.coverage).some(Boolean);
+      const complete = !extension?.preserveOthers && !Object.values(result.coverage).some(Boolean);
       if (complete || extension?.completeSkills) {
         const open = this.db
           .prepare(
-            `SELECT * FROM curator_recommendations WHERE project_id=? AND state='open' AND ${extension ? "json_extract(payload_json,'$.rule_id') LIKE 'duplicates:%'" : "json_extract(payload_json,'$.rule_id') NOT LIKE 'duplicates:%'"} LIMIT 1001`,
+            `SELECT * FROM curator_recommendations WHERE project_id=? AND state='open' AND ${extension ? "json_extract(payload_json,'$.rule_id') LIKE 'duplicates:%'" : "json_extract(payload_json,'$.rule_id') NOT LIKE 'duplicates:%' AND json_extract(payload_json,'$.rule_id') NOT LIKE 'learning:%'"} LIMIT 1001`,
           )
           .all(this.#scope.id) as Row[];
         if (open.length <= 1000)
@@ -262,6 +268,118 @@ export class RecommendationService {
           );
       return { ...summary, cached: !!old, warning: ADVISORY_WARNING };
     });
+  }
+  reconcileLearning(input: unknown) {
+    return this.write(() => this.reconcileLearningLocked(input));
+  }
+  private reconcileLearningLocked(input: unknown) {
+    const id = parseCurator(z.uuid(), input);
+    const row = learningStorageExists(this.db)
+      ? (this.db
+          .prepare('SELECT payload_json FROM learning_signals WHERE id=? AND project_id=?')
+          .get(id, this.#scope.id) as { payload_json: string } | undefined)
+      : undefined;
+    if (!row) throw new AgentMindError('LEARNING_NOT_FOUND', 'Signal unavailable in this scope.');
+    if (!curatorStorageExists(this.db)) return;
+    const signal = JSON.parse(row.payload_json) as LearningSignal;
+    const triage = assessLearning(this.db, this.#scope, signal);
+    const keep =
+      signal.status === 'open' && !['IGNORE', 'RECORD_EXPERIENCE'].includes(triage.action)
+        ? triage.related_versions[0]
+        : null;
+    return this.write(() => {
+      const rows = this.db
+        .prepare(
+          "SELECT * FROM curator_recommendations WHERE project_id=? AND json_extract(payload_json,'$.rule_id')=? AND state='open' LIMIT 101",
+        )
+        .all(this.#scope.id, `learning:${id}`) as Row[];
+      if (rows.length > 100)
+        throw new AgentMindError(
+          'LEARNING_RECONCILE_LIMIT',
+          'Too many historical recommendation targets; inspect locally.',
+        );
+      for (const r of rows)
+        if (r.version_id !== keep) {
+          const at = new Date().toISOString();
+          this.db
+            .prepare(
+              "UPDATE curator_recommendations SET state='superseded',revision=revision+1,last_evaluated_at=? WHERE id=? AND project_id=?",
+            )
+            .run(at, r.id, this.#scope.id);
+          this.history(r.id, r.revision + 1, 'superseded', r.payload_json, at);
+        }
+    });
+  }
+  recommendLearning(input: unknown) {
+    return this.write(() => this.recommendLearningLocked(input));
+  }
+  private recommendLearningLocked(input: unknown) {
+    const id = parseCurator(z.uuid(), input);
+    const row = learningStorageExists(this.db)
+      ? (this.db
+          .prepare('SELECT payload_json FROM learning_signals WHERE id=? AND project_id=?')
+          .get(id, this.#scope.id) as { payload_json: string } | undefined)
+      : undefined;
+    if (!row)
+      throw new AgentMindError('LEARNING_NOT_FOUND', 'Signal is unavailable in this scope.');
+    const signal = JSON.parse(row.payload_json) as LearningSignal;
+    if (signal.status !== 'open')
+      throw new AgentMindError('LEARNING_CLOSED', 'Closed signals cannot escalate.');
+    const triage = assessLearning(this.db, this.#scope, signal);
+    this.reconcileLearning(id);
+    if (!triage.related_versions.length || ['IGNORE', 'RECORD_EXPERIENCE'].includes(triage.action))
+      return {
+        stored: false,
+        reason: 'No eligible existing skill target or escalation is warranted.',
+        advisory_only: true,
+      };
+    const version = triage.related_versions[0];
+    const target = this.db
+      .prepare('SELECT skill_id FROM skill_versions WHERE id=? AND project_id=?')
+      .get(version, this.#scope.id) as { skill_id: string } | undefined;
+    if (!target)
+      throw new AgentMindError('LEARNING_EVIDENCE_DENIED', 'Target version is unavailable.');
+    const draft = draftRecommendationSchema.parse({
+      skill_id: target.skill_id,
+      version_id: version,
+      rule_id: `learning:${id}`,
+      type: 'INVESTIGATE',
+      priority: 'LOW',
+      priority_reason:
+        'An advisory signal warrants scoped investigation; no impact or causation is established.',
+      confidence: 'LOW',
+      confidence_reason: 'Learning observations are not independently verified task success.',
+      evidence: [
+        { kind: 'learning_signal', id },
+        { kind: 'skill_version', id: version },
+      ],
+      limitations: triage.limitations,
+      explanation: triage.reason,
+      suggested_action:
+        'Inspect the signal and exact source records. Use separate existing experience, candidate, evaluation and human approval workflows if justified.',
+    });
+    return this.persistAnalysis(
+      {
+        drafts: [draft],
+        source_digest: curatorDigest([signal, triage]),
+        coverage: {
+          skills_truncated: false,
+          events_truncated: false,
+          experiences_truncated: false,
+          recommendations_truncated: false,
+        },
+      },
+      new Date().toISOString(),
+      this.db.pragma('data_version', { simple: true }),
+      {
+        configDigest: curatorDigest(LEARNING_POLICY),
+        policyVersion: LEARNING_POLICY,
+        preserveOthers: true,
+        cache: () => {},
+        eligible: [],
+        completeSkills: false,
+      },
+    );
   }
   analyzeDuplicates(input: unknown = {}) {
     const p = parseCurator(duplicateOptionsSchema, input);

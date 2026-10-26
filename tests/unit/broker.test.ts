@@ -409,3 +409,26 @@ it('allows only scoped advisory duplicate operations through broker dispatch', (
   for (const op of ['curator_merge', 'curator_delete', 'curator_consolidate'])
     expect(() => f.call(op)).toThrow();
 });
+it('scopes learning capture/detection and exposes no human-attestation or lifecycle authority', () => {
+  const f = fixture();
+  f.record();
+  const r = f.call('learning_signal_record', {
+    schema_version: 1,
+    type: 'USER_CORRECTION',
+    title: 'Inspect clamp lower bounds',
+    summary:
+      'The original clamp procedure appears to omit the lower-bound acceptance case; inspect exact source tests before proposing any change.',
+  }) as { id: string };
+  expect(f.call('learning_signal_get', { signal_id: r.id }, 204)).toMatchObject({
+    triage: { evidence_trust: 'AGENT_REPORTED' },
+  });
+  expect(() => f.call('learning_signal_get', { signal_id: r.id }, 205)).toThrow();
+  for (const op of [
+    'learning_signal_approve',
+    'learning_signal_confirm_correction',
+    'learning_signal_promote',
+    'learning_signal_install',
+  ])
+    expect(() => f.call(op, { signal_id: r.id })).toThrow();
+  expect(f.call('learning_signal_detect')).toMatchObject({ advisory_only: true });
+});

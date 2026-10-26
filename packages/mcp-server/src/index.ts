@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {
   ExperienceService,
+  LearningSignalService,
   MemoryService,
   openDatabase,
   RecommendationService,
@@ -55,6 +56,15 @@ async function main(): Promise<void> {
         ),
       },
       config.curatorEnabled ? new RecommendationService(db, config.project) : undefined,
+      config.learningEnabled
+        ? new LearningSignalService(
+            db,
+            config.project,
+            config.sourceAgent,
+            'explicit-mcp-v1',
+            config.learningCaptureEnabled,
+          )
+        : undefined,
     );
     const shutdown = createShutdown({
       closeServer: () => server.close(),

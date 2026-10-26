@@ -521,3 +521,19 @@ pnpm benchmark:duplicates
 ```
 
 Existing opt-in MCP adds `curator_duplicates` and read-only `curator_compare`; recommendation listing supports classification filters. No model calls or API keys are required. High similarity is not proof of safe interchangeability, and bounded retrieval can miss matches. See [eligibility, algorithms, caching, commands and limits](docs/P3_002_DUPLICATES.md) and [implementation/results](docs/reviews/P3-002_IMPLEMENTATION.md).
+
+P3-002 review remediation adds frequency-ranked candidate sampling, narrow action aliases/inflections and explicit non-authorizing triage suggestions. Extraction/detection policy v2 invalidates old caches while preserving v1 recommendation readability. See [finding dispositions, factual corrections and fresh checks](docs/reviews/P3-002_REMEDIATION.md); semantic detection and OS-deployment limitations remain explicit.
+
+## P3-003 learning signal capture
+
+Opt-in `--enable-learning` adds bounded learning capture, incremental structured-event detection and advisory triage. Agent claims stay unverified; signals reference existing experiences, skill versions, evaluations and recommendations without automatically creating experiences or skills. `--disable-learning-capture` stops capture/detection. No native Stop hook, automatic reflection, model API, approval or distribution is added.
+
+```sh
+pnpm build
+node packages/mcp-server/dist/learning.js --capabilities
+# Run within the configured project and use an existing disposable registry:
+node /absolute/agent-mind/packages/mcp-server/dist/learning.js --project-root "$PWD" --db /absolute/registry.db --detect
+node /absolute/agent-mind/packages/mcp-server/dist/learning.js --project-root "$PWD" --db /absolute/registry.db --list
+```
+
+See [capture schemas, trust policy, commands and Codex setup](docs/P3_003_LEARNING.md), the [optional 510-byte capture hint](docs/LEARNING_CAPTURE_HINT.md), and [actual implementation and verification results](docs/reviews/P3-003_IMPLEMENTATION.md). Native Codex capture remains NOT VERIFIED after a local-state permission failure; authenticated Claude validation is deferred. SDK integration and native verification are reported separately.

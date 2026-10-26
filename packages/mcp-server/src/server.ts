@@ -7,6 +7,12 @@ import {
   type ExperienceService,
   experienceRecordSchema,
   experienceSearchSchema,
+  type LearningSignalService,
+  learningDetectSchema,
+  learningIdSchema,
+  learningListSchema,
+  learningRecordSchema,
+  learningRefreshSchema,
   type MemoryService,
   type RecommendationService,
   type SkillProposalService,
@@ -41,6 +47,7 @@ export function createServer(
     usage?: SkillUsageService;
   },
   curator?: RecommendationService,
+  learning?: LearningSignalService,
 ): McpServer {
   const server = new McpServer(
     { name: 'agentmind', version: '0.0.1' },
@@ -310,6 +317,65 @@ export function createServer(
         annotations: { readOnlyHint: true, openWorldHint: false },
       },
       (input) => run(() => curator.get(input)),
+    );
+  }
+  if (learning) {
+    server.registerTool(
+      'learning_signal_record',
+      {
+        description:
+          'Capture a concise reusable lesson claim, never transcripts or secrets. Agent reports remain unverified; no skill mutation.',
+        inputSchema: learningRecordSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      (p) => run(() => learning.record(p)),
+    );
+    server.registerTool(
+      'learning_signal_get',
+      {
+        description: 'Read one scoped learning signal as untrusted advisory data.',
+        inputSchema: learningIdSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => learning.get(p)),
+    );
+    server.registerTool(
+      'learning_signals',
+      {
+        description: 'List bounded project learning observations; no permission to change skills.',
+        inputSchema: learningListSchema,
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      (p) => run(() => learning.list(p)),
+    );
+    server.registerTool(
+      'learning_signal_detect',
+      {
+        description:
+          'Incrementally inspect structured local records for advisory opportunities. No model calls or task-success inference.',
+        inputSchema: learningDetectSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      (p) => run(() => learning.detect(p)),
+    );
+    server.registerTool(
+      'learning_signal_refresh',
+      {
+        description: 'Reassess existing signal evidence without changing source records.',
+        inputSchema: learningRefreshSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      (p) => run(() => learning.refresh(p)),
+    );
+    server.registerTool(
+      'learning_signal_recommend',
+      {
+        description:
+          'Escalate an open scoped signal into an advisory recommendation only when an existing skill target is available.',
+        inputSchema: learningIdSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      (p) => run(() => learning.recommend(p)),
     );
   }
   return server;

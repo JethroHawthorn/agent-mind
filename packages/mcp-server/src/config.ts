@@ -16,6 +16,8 @@ export function readConfig(args = process.argv.slice(2)) {
         'disable-experience-capture': { type: 'boolean', default: false },
         'disable-skill-proposals': { type: 'boolean', default: false },
         'disable-telemetry': { type: 'boolean', default: false },
+        'enable-learning': { type: 'boolean', default: false },
+        'disable-learning-capture': { type: 'boolean', default: false },
         'enable-curator': { type: 'boolean', default: false },
       },
       strict: true,
@@ -36,12 +38,14 @@ export function readConfig(args = process.argv.slice(2)) {
       proposalEnabled: !values['disable-skill-proposals'],
       telemetryEnabled: !values['disable-telemetry'],
       curatorEnabled: values['enable-curator'],
+      learningEnabled: values['enable-learning'],
+      learningCaptureEnabled: !values['disable-learning-capture'],
     };
   } catch (error) {
     if (error instanceof AgentMindError) throw error;
     throw new AgentMindError(
       'INVALID_CONFIG',
-      'Use --project-root /absolute/project [--project-key trusted-stable-key] [--db /absolute/memory.db] [--source-agent codex|claude|unknown] [--disable-experience-capture] [--disable-skill-proposals] [--disable-telemetry] [--enable-curator] [--health].',
+      'Use --project-root /absolute/project [--project-key trusted-stable-key] [--db /absolute/memory.db] [--source-agent codex|claude|unknown] [--disable-experience-capture] [--disable-skill-proposals] [--disable-telemetry] [--enable-curator] [--enable-learning] [--disable-learning-capture] [--health].',
     );
   }
 }

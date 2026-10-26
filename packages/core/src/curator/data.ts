@@ -154,6 +154,11 @@ export function evidenceExists(
   id: string,
 ) {
   switch (kind) {
+    case 'learning_signal':
+      return (
+        !!db.prepare("SELECT 1 FROM sqlite_master WHERE name='learning_signals'").get() &&
+        !!db.prepare('SELECT 1 FROM learning_signals WHERE id=? AND project_id=?').get(id, scope.id)
+      );
     case 'usage':
       return !!db
         .prepare('SELECT 1 FROM skill_usage_events WHERE event_id=? AND project_id=?')
