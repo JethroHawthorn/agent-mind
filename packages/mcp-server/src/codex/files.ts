@@ -50,7 +50,7 @@ export function replaceFile(
   }
   const parent = dirname(path);
   mkdirSync(parent, { recursive: true, mode: 0o700 });
-  rejectLinks(root, relative(root, parent));
+  if (parent !== root) rejectLinks(root, relative(root, parent));
   const temp = join(parent, `.agentmind-stage-${randomUUID()}`);
   const fd = openSync(
     temp,

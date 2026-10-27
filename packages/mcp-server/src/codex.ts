@@ -15,6 +15,7 @@ async function main() {
   process.umask(0o077);
   const { values, positionals } = parseArgs({
     options: {
+      help: { type: 'boolean', short: 'h' },
       'project-root': { type: 'string' },
       db: { type: 'string' },
       scope: { type: 'string', default: 'project' },
@@ -27,12 +28,42 @@ async function main() {
     allowPositionals: true,
     strict: true,
   });
+  if (values.help) {
+    process.stdout.write(`AgentMind Codex integration (supervised local mode)
+Usage: agentmind codex <command> --project-root /absolute/project [options]
+
+Commands:
+  setup       Preview integration; --apply installs managed project files
+  status      Inspect enrollment and managed files
+  doctor      Inspect prerequisites; --connect tests the MCP runtime
+  uninstall   Preview removal; --apply removes only managed integration
+
+Options:
+  -h, --help           Show help without inspecting or changing configuration
+  --project-root PATH  Required canonical project directory
+  --scope project      Project scope only (default); user/global is unsupported
+  --db PATH            Registry database path
+  --codex PATH         Codex executable path
+  --dry-run            Explicit preview (setup/uninstall default)
+  --apply              Apply setup or uninstall
+  --connect            Doctor only; may initialize the enrolled database
+  --json               Machine-readable output
+
+Enroll each project separately to preserve project privacy. No AGENTS.md edits.
+Approval, promotion and distribution remain separate operator workflows.
+`);
+    return;
+  }
+  if (values.scope !== 'project')
+    throw new AgentMindError(
+      'CODEX_USER_SCOPE_UNSUPPORTED',
+      'User/global setup is disabled to preserve project privacy and scope isolation. Enroll each repository with setup --scope project --project-root /absolute/project; global Codex configuration is unchanged.',
+    );
   const action = positionals[0];
   if (
     positionals.length !== 1 ||
     !['setup', 'status', 'doctor', 'uninstall'].includes(action ?? '') ||
     !values['project-root'] ||
-    values.scope !== 'project' ||
     (values.apply && values['dry-run']) ||
     (values.connect && values['dry-run']) ||
     (values.connect && action !== 'doctor') ||

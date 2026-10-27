@@ -604,8 +604,16 @@ See [routing policy and CLI examples](docs/P3_008_ROUTING.md) and [measured impl
 
 ### P4-001 Codex daily workflow
 
-Build once, then preview project-local integration with `pnpm codex setup --scope project --project-root /absolute/project --db /absolute/private/agentmind.db --dry-run`. Apply with an explicit `--apply` only after reviewing it. The setup preserves unrelated TOML, adds a small native router and leaves AGENTS.md/global Codex configuration untouched. `status`, `doctor [--connect]` and `uninstall [--dry-run | --apply]` use the same command prefix. User-scope setup is intentionally unsupported.
+Build once, then preview project-local integration with `pnpm codex setup --scope project --project-root /absolute/project --db /absolute/private/agentmind.db --dry-run`. Apply with an explicit `--apply` only after reviewing it. The setup preserves unrelated TOML, adds a small native router and leaves AGENTS.md/global Codex configuration untouched. `status`, `doctor [--connect]` and `uninstall [--dry-run | --apply]` use the same command prefix. Use `pnpm codex --help` for all options. User-scope setup is intentionally unsupported to preserve project privacy; enroll each repository separately.
 
 The adapter reuses AgentMind's existing MCP runtime and scope/approval/integrity checks. It enables compact knowledge retrieval, meaningful lower-trust learning capture and eligible immutable proposals; human review and approval stay separate. No hooks, daemon, automatic approval or skill distribution are added.
 
 See [setup, daily use and recovery](docs/CODEX_DAILY_WORKFLOW.md) and [actual P4-001 verification](docs/reviews/P4-001_IMPLEMENTATION.md). Offline workflow and real CLI configuration/router discovery are distinct from authenticated native behavior, which remains NOT VERIFIED in this managed environment.
+
+P4-001 review fixes and remaining native/OS verification gates are documented in [P4-001 remediation](docs/reviews/P4-001_REMEDIATION.md). Agent write transactions use bounded SQLite BUSY retries; sustained contention remains an explicit failure. Workstation deployment is supervised local mode; autonomous activation remains NO-GO.
+
+### P4-002 Claude daily workflow
+
+Use `pnpm claude --help`, then preview `pnpm claude setup --scope project --project-root /absolute/project --db /absolute/shared/agentmind.db --dry-run --json`. Explicit `--apply` installs only managed MCP/router/enrollment files; status, doctor and uninstall follow the Codex conventions. User registration is supported through the official CLI and stays pinned to the enrolled project. No auth/settings/CLAUDE.md edits or hooks are installed.
+
+See [Claude setup, daily use, native verification and recovery](docs/CLAUDE_DAILY_WORKFLOW.md) and [P4-002 actual implementation evidence](docs/reviews/P4-002_IMPLEMENTATION.md). A configured login is distinct from successful native execution; current probes timed out before model completion. Supervised-mode, OS isolation and behavioral-execution limits remain unchanged.

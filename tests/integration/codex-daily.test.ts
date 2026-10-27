@@ -229,7 +229,10 @@ it('CLI preview does not disclose unrelated secrets or apply changes; explicit f
   expect(JSON.parse(run(['status']).stdout).installed).toBe(true);
   expect(run(['uninstall', '--apply']).status).toBe(0);
   expect(readFileSync(f.config, 'utf8')).toContain('PRIVATE_FIXTURE_SENTINEL');
-  expect(run(['setup', '--scope', 'user', '--apply']).status).toBe(1);
+  const unsupported = run(['setup', '--scope', 'user', '--apply']);
+  expect(unsupported.status).toBe(1);
+  expect(unsupported.stderr).toContain('CODEX_USER_SCOPE_UNSUPPORTED');
+  expect(unsupported.stderr).toContain('project privacy');
   expect(run(['setup', '--apply', '--dry-run']).status).toBe(1);
   expect(run(['doctor', '--connect', '--dry-run']).status).toBe(1);
 });
@@ -380,3 +383,23 @@ it('bounded SQLite write contention returns an error, then coding-session storag
     content: 'A later write succeeds after lock release.',
   });
 }, 15000);
+
+it.each([['--help'], ['-h'], ['setup', '--help']])(
+  'CLI help needs no project, installed Codex or configuration: %j',
+  (...args) => {
+    const result = spawnSync(
+      process.execPath,
+      [resolve('packages/mcp-server/dist/codex.js'), ...args],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, PATH: '/nonexistent' },
+        timeout: 5000,
+      },
+    );
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toContain('Usage:');
+    for (const name of ['setup', 'status', 'doctor', 'uninstall', '--project-root', '--apply'])
+      expect(result.stdout).toContain(name);
+  },
+);

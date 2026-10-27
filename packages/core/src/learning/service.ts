@@ -10,6 +10,7 @@ import { consumeOperatorGrant, reviewDigest } from '../operator-confirmation.js'
 import type { ProjectScope } from '../project.js';
 import type { UsageSource } from '../skill-usage-model.js';
 import { nextTimestamp } from '../timestamp.js';
+import { agentWrite } from '../write-transaction.js';
 import { assessLearning, evaluationFact, referenceExists } from './evidence.js';
 import {
   type LearningSignal,
@@ -468,23 +469,19 @@ export class LearningSignalService {
       .run(s.id, this.#scope.id, s.revision, payload);
   }
   private write<T>(operation: () => T): T {
-    const previous = this.db.pragma('busy_timeout', { simple: true });
-    this.db.pragma('busy_timeout=200');
     try {
       if (!this.db.prepare('SELECT 1 FROM projects WHERE id=?').get(this.#scope.id))
         throw new AgentMindError(
           'LEARNING_PROJECT_UNAVAILABLE',
           'Initialize the permitted project through the existing memory server first.',
         );
-      return this.db.transaction(operation).immediate();
+      return agentWrite(this.db, operation);
     } catch (error) {
       if (error instanceof AgentMindError) throw error;
       throw new AgentMindError(
         'LEARNING_STORAGE_FAILED',
         'Learning metadata transaction failed; nothing was claimed stored.',
       );
-    } finally {
-      this.db.pragma(`busy_timeout=${Number(previous)}`);
     }
   }
 }

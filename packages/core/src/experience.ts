@@ -11,6 +11,7 @@ import {
   experienceSearchSchema,
 } from './experience-schemas.js';
 import type { ProjectScope } from './project.js';
+import { agentWrite } from './write-transaction.js';
 
 export type Experience = ExperienceInput & {
   id: string;
@@ -172,49 +173,47 @@ export class ExperienceService {
       );
     }
     // Serialize dedup lookup + append so concurrent writers see earlier candidates.
-    return this.db
-      .transaction(() => {
-        const hash = fingerprint(data.problem, data.solution);
-        const possible_duplicates = this.duplicates(data, hash);
-        const timestamp = new Date().toISOString();
-        const experience: Experience = {
-          ...data,
-          id: randomUUID(),
-          project_id: this.#project.id,
-          source_agent: this.sourceAgent,
-          capture_method: 'explicit',
-          approval_status: 'candidate',
-          verification_status: 'unverified',
-          created_at: timestamp,
-          updated_at: timestamp,
-          reviewed_by: null,
-          reviewed_at: null,
-          redacted,
-        };
-        this.db
-          .prepare(`INSERT INTO experiences (
+    return agentWrite(this.db, () => {
+      const hash = fingerprint(data.problem, data.solution);
+      const possible_duplicates = this.duplicates(data, hash);
+      const timestamp = new Date().toISOString();
+      const experience: Experience = {
+        ...data,
+        id: randomUUID(),
+        project_id: this.#project.id,
+        source_agent: this.sourceAgent,
+        capture_method: 'explicit',
+        approval_status: 'candidate',
+        verification_status: 'unverified',
+        created_at: timestamp,
+        updated_at: timestamp,
+        reviewed_by: null,
+        reviewed_at: null,
+        redacted,
+      };
+      this.db
+        .prepare(`INSERT INTO experiences (
         id, project_id, source_agent, problem, solution, outcome_status, outcome_summary,
         evidence_json, provenance_json, fingerprint, redacted, created_at, updated_at
       ) VALUES (@id, @project_id, @source_agent, @problem, @solution, @outcome_status, @outcome_summary,
         @evidence_json, @provenance_json, @fingerprint, @redacted, @created_at, @updated_at)`)
-          .run({
-            id: experience.id,
-            project_id: experience.project_id,
-            source_agent: experience.source_agent,
-            problem: data.problem,
-            solution: data.solution,
-            outcome_status: data.outcome.status,
-            outcome_summary: data.outcome.summary,
-            evidence_json: JSON.stringify(data.evidence),
-            provenance_json: JSON.stringify(data.provenance),
-            fingerprint: hash,
-            redacted: Number(redacted),
-            created_at: timestamp,
-            updated_at: timestamp,
-          });
-        return { experience, possible_duplicates, untrusted_data: true as const };
-      })
-      .immediate();
+        .run({
+          id: experience.id,
+          project_id: experience.project_id,
+          source_agent: experience.source_agent,
+          problem: data.problem,
+          solution: data.solution,
+          outcome_status: data.outcome.status,
+          outcome_summary: data.outcome.summary,
+          evidence_json: JSON.stringify(data.evidence),
+          provenance_json: JSON.stringify(data.provenance),
+          fingerprint: hash,
+          redacted: Number(redacted),
+          created_at: timestamp,
+          updated_at: timestamp,
+        });
+      return { experience, possible_duplicates, untrusted_data: true as const };
+    });
   }
 
   private duplicates(data: ExperienceInput, hash: string): Duplicate[] {

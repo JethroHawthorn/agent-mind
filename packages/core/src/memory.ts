@@ -5,6 +5,7 @@ import { AgentMindError } from './errors.js';
 import { assertSafeSummary } from './privacy.js';
 import type { ProjectScope } from './project.js';
 import { saveSchema, searchSchema } from './schemas.js';
+import { agentWrite } from './write-transaction.js';
 
 export type Memory = {
   id: string;
@@ -50,11 +51,13 @@ export class MemoryService {
       status: 'unverified',
       created_at: new Date().toISOString(),
     };
-    this.db
-      .prepare(`INSERT INTO memories
+    agentWrite(this.db, () =>
+      this.db
+        .prepare(`INSERT INTO memories
       (id, project_id, title, content, kind, source_agent, status, created_at)
       VALUES (@id, @project_id, @title, @content, @kind, @source_agent, @status, @created_at)`)
-      .run(memory);
+        .run(memory),
+    );
     return memory;
   }
 

@@ -23,6 +23,7 @@ import { createShutdown } from './shutdown.js';
 export async function startServer(
   config: ReturnType<typeof readConfig>,
   integrationStatus = false,
+  allowedTools?: readonly string[],
 ): Promise<void> {
   // Restrict new SQLite/WAL/SHM files on POSIX; no permissions are widened.
   process.umask(0o077);
@@ -77,6 +78,7 @@ export async function startServer(
         : undefined,
       config.authoringEnabled ? new LearningReviewService(db, config.project) : undefined,
       config.retrievalEnabled ? new SkillRetrievalService(db, config.project) : undefined,
+      allowedTools,
     );
     if (integrationStatus)
       server.registerTool(

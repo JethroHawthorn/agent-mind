@@ -10,6 +10,7 @@ import { SkillProposalService } from '../skill-proposal.js';
 import { diffSkillFiles } from '../skill-review.js';
 import { SkillStore } from '../skill-store.js';
 import { validateSkillBundle } from '../skill-validation.js';
+import { agentWrite } from '../write-transaction.js';
 import { authoringWarnings } from './analysis.js';
 import { buildAuthoringContext } from './context.js';
 import {
@@ -479,18 +480,14 @@ export class SkillAuthoringService {
       );
   }
   private write<T>(f: () => T): T {
-    const timeout = this.db.pragma('busy_timeout', { simple: true });
-    this.db.pragma('busy_timeout=250');
     try {
-      return this.db.transaction(f).immediate();
+      return agentWrite(this.db, f);
     } catch (e) {
       if (e instanceof AgentMindError) throw e;
       throw new AgentMindError(
         'AUTHORING_STORAGE_FAILED',
         'Authoring transaction failed; no partial candidate or metadata was committed.',
       );
-    } finally {
-      this.db.pragma(`busy_timeout=${Number(timeout)}`);
     }
   }
 }
