@@ -1,41 +1,71 @@
-// Invoked only by the explicit administrator-run disposable OS test harness, after setuid/setgroups.
-
+// Administrator-authorized disposable fixture only. No transcript/environment ingestion.
 import { spawnSync } from 'node:child_process';
-import { closeSync, openSync, readFileSync, renameSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, renameSync, symlinkSync, unlinkSync } from 'node:fs';
+import { createConnection } from 'node:net';
 import { brokerRequest, loadBrokerClient } from '../../packages/core/dist/index.js';
 
-const job = JSON.parse(readFileSync(0, 'utf8'));
+const raw = readFileSync(0, 'utf8');
+if (Buffer.byteLength(raw) > 131072) throw Error('Worker input limit');
+const job = JSON.parse(raw);
+const emit = (r) =>
+  console.log(
+    JSON.stringify({
+      ...r,
+      executing_uid: process.getuid(),
+      executing_euid: process.geteuid(),
+      operation: job.kind,
+    }),
+  );
 if (job.kind === 'rpc') {
   try {
-    console.log(
-      JSON.stringify({
-        ok: true,
-        result: await brokerRequest(loadBrokerClient(job.client), job.channel, job.request),
-      }),
-    );
+    emit({
+      ok: true,
+      result: await brokerRequest(loadBrokerClient(job.client), job.channel, job.request),
+      rejection_layer: null,
+    });
   } catch {
-    console.log(JSON.stringify({ ok: false }));
+    emit({ ok: false, rejection_layer: 'UNDETERMINED_IPC_OR_APPLICATION' });
   }
-} else if (job.kind === 'deny-write' || job.kind === 'deny-read') {
+} else if (['deny-write', 'deny-read', 'deny-replace', 'deny-symlink'].includes(job.kind)) {
   try {
-    const fd = openSync(job.path, job.kind === 'deny-write' ? 'r+' : 'r');
-    closeSync(fd);
-    console.log(JSON.stringify({ denied: false }));
+    if (job.kind === 'deny-replace') renameSync(job.path, `${job.path}.attack`);
+    else if (job.kind === 'deny-symlink') {
+      symlinkSync('/dev/null', job.path);
+      unlinkSync(job.path);
+    } else {
+      const fd = openSync(job.path, job.kind === 'deny-write' ? 'r+' : 'r');
+      closeSync(fd);
+    }
+    emit({ denied: false, rejection_layer: null });
   } catch (e) {
-    console.log(JSON.stringify({ denied: ['EACCES', 'EPERM'].includes(e.code) }));
+    emit({
+      denied: ['EACCES', 'EPERM'].includes(e.code),
+      error_code: e.code,
+      rejection_layer: ['EACCES', 'EPERM'].includes(e.code) ? 'OS_PERMISSION' : 'OTHER_ERROR',
+    });
   }
-} else if (job.kind === 'deny-replace') {
-  try {
-    renameSync(job.path, `${job.path}.attack`);
-    console.log(JSON.stringify({ denied: false }));
-  } catch (e) {
-    console.log(JSON.stringify({ denied: ['EACCES', 'EPERM'].includes(e.code) }));
-  }
+} else if (job.kind === 'deny-connect') {
+  const s = createConnection(job.path);
+  s.setTimeout(3000, () => {
+    s.destroy();
+    emit({ denied: false, error_code: 'TIMEOUT', rejection_layer: 'UNDETERMINED' });
+  });
+  s.on('connect', () => {
+    s.end();
+    emit({ denied: false, rejection_layer: null });
+  });
+  s.on('error', (e) =>
+    emit({
+      denied: ['EACCES', 'EPERM'].includes(e.code),
+      error_code: e.code,
+      rejection_layer: ['EACCES', 'EPERM'].includes(e.code) ? 'OS_PERMISSION' : 'OTHER_ERROR',
+    }),
+  );
 } else if (job.kind === 'read-copy') {
   try {
-    console.log(JSON.stringify({ ok: true, text: readFileSync(job.path, 'utf8') }));
+    emit({ ok: true, text: readFileSync(job.path, 'utf8') });
   } catch {
-    console.log(JSON.stringify({ ok: false }));
+    emit({ ok: false });
   }
 } else if (job.kind === 'pty') {
   const r = spawnSync(
@@ -52,13 +82,18 @@ if (job.kind === 'rpc') {
       '--request',
       job.requestFile,
     ],
-    { encoding: 'utf8', timeout: 7000, maxBuffer: 8192, env: {} },
+    {
+      encoding: 'utf8',
+      timeout: 7000,
+      maxBuffer: 8192,
+      env: { APPROVED_BY: 'operator', AGENTMIND_PROTECTED: 'true' },
+    },
   );
-  console.log(
-    JSON.stringify({
-      denied:
-        r.stdout?.includes('BROKER_OPERATOR_DENIED') === true ||
-        r.stderr?.includes('BROKER_OPERATOR_DENIED') === true,
-    }),
-  );
-} else throw new Error('Unsupported isolated test action.');
+  emit({
+    denied:
+      r.stdout?.includes('BROKER_OPERATOR_DENIED') === true ||
+      r.stderr?.includes('BROKER_OPERATOR_DENIED') === true,
+    rejection_layer: 'APPLICATION_WITH_OS_PEER_CHECK',
+    timed_out: r.error?.code === 'ETIMEDOUT',
+  });
+} else throw Error('Unsupported isolated action');

@@ -13,6 +13,7 @@ const absolute = z
 export const brokerConfigSchema = z.strictObject({
   schema_version: z.literal(1),
   broker_uid: uid,
+  deployment_id: z.uuid().optional(),
   operator_gid: uid.optional(),
   runtime_root: absolute,
   registry_directory: absolute,
@@ -201,6 +202,10 @@ export function loadProtectedConfig(
   for (const p of ancestors(path)) secure(p, [0], p !== path);
   if (lstatSync(path).size > 32768) denied('Protected configuration is too large.');
   const c = validateBrokerConfig(JSON.parse(readFileSync(path, 'utf8')));
+  if (!c.deployment_id)
+    denied(
+      'Protected startup requires a fresh administrator-bound deployment ID after private import.',
+    );
   if (Buffer.byteLength(`${c.socket_directory}/operator/operator.sock`) > 103)
     denied('Darwin socket path exceeds supported length.');
   if (
@@ -208,6 +213,8 @@ export function loadProtectedConfig(
     (process.getuid?.() !== c.broker_uid || process.geteuid?.() !== c.broker_uid)
   )
     denied('Run only as the dedicated non-root broker identity.');
+  if (purpose === 'start' && realpathSync(process.cwd()) !== c.runtime_root)
+    denied('Broker working directory must be the protected runtime.');
   // Necessary deployment check, not a proof of absent delegated sudo/SSH/container authority.
   for (const uid of [c.broker_uid, ...c.agents.map((a) => a.uid)]) {
     const groups = execFileSync('/usr/bin/id', ['-Gn', String(uid)], {

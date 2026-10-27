@@ -204,6 +204,36 @@ it('broker dispatch binds retrieval scope to authenticated principal (synthetic 
       operators: [{ uid: 202, projects: ['test'] }],
     }),
   );
+  // Initial state is a supervised approval fixture, not protected authority.
+  // Preserve all scope/cache assertions below, but explicitly re-review the exact
+  // artifact through the existing synthetic operator interface before retrieval.
+  expect(() =>
+    b.handle(
+      'agent',
+      { uid: 203, gid: 20 },
+      { schema_version: 1, op: 'skill_load', input: { skill_id: a.identity.id } },
+    ),
+  ).toThrow(/deployment/);
+  const confirmation = b.handle(
+    'operator',
+    { uid: 202, gid: 20 },
+    {
+      schema_version: 1,
+      project: 'test',
+      op: 'operator_prepare',
+      input: { kind: 'skill', request: { action: 'approve', version_id: a.version.id } },
+    },
+  ) as { challenge_id: string; digest: string };
+  b.handle(
+    'operator',
+    { uid: 202, gid: 20 },
+    {
+      schema_version: 1,
+      project: 'test',
+      op: 'operator_commit',
+      input: { challenge_id: confirmation.challenge_id, review_digest: confirmation.digest },
+    },
+  );
   const r = b.handle(
     'agent',
     { uid: 203, gid: 20 },

@@ -47,8 +47,48 @@ else
       deployed: false,
       os_isolation: 'NOT VERIFIED',
       changes_performed: false,
+      required_deployment_id:
+        c.deployment_id ?? 'MISSING; administrator must select a fresh UUID after private import',
       required_uid: c.broker_uid,
       required_operator_gid: c.operator_gid,
+      identities: {
+        broker: c.broker_uid,
+        operators: c.operators.map((o) => o.uid),
+        runners: c.agents.map((a) => ({ uid: a.uid, project: a.project, source: a.source })),
+        observed: false,
+      },
+      protected_layout: [
+        {
+          path: c.runtime_root,
+          owner: 'root',
+          mode: '0755 or stricter; no runner writes; all dependencies included',
+        },
+        { path: values.config, owner: 'root', mode: '0644; protected ancestors' },
+        {
+          path: c.registry_directory,
+          owner: c.broker_uid,
+          mode: '0700; database/WAL/SHM/journal/backups 0600',
+        },
+        {
+          path: c.socket_directory,
+          owner: c.broker_uid,
+          mode: '0711; agent.sock 0666 plus kernel UID authorization',
+        },
+        {
+          path: `${c.socket_directory}/operator`,
+          owner: c.broker_uid,
+          group: c.operator_gid,
+          mode: '0710; operator.sock 0660 plus kernel UID authorization',
+        },
+      ],
+      staging:
+        'No runner database handle. Bounded broker RPC validates and seals candidate rows; agent assertions remain untrusted.',
+      runner:
+        'Run broker-runner.js only from an enrolled restricted account with its own session and root-owned policy; no sudo or automatic identity switching.',
+      rollback:
+        'Administrator stops broker first, retains protected registry/backups/audit, restores reviewed prior runtime and compatible backup. Never reopen protected data to same-UID writers as a fallback.',
+      uninstall:
+        'Administrator bootout/removes only the reviewed launchd job and client integration; retain registry, backups and audit. No data/account deletion is planned.',
       preflight_command: [node, entry, '--config', values.config, '--preflight'],
       service_definition:
         'Render with --plist; administrator must verify broker-user matches broker_uid before installation.',

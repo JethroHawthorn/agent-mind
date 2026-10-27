@@ -1,5 +1,6 @@
 // Explicit administrator-run acceptance, never an installer. No account/daemon/live-registry mutation.
 import { spawn, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import {
   chmodSync,
   chownSync,
@@ -12,14 +13,15 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
-import { validateBrokerConfig } from '../packages/core/dist/index.js';
+import { rootOwnedPath, validateBrokerConfig, verifyPaths } from '../packages/core/dist/index.js';
 
 const { values } = parseArgs({
   options: {
     'runtime-root': { type: 'string' },
+    'authorize-disposable-os-tests': { type: 'boolean' },
     'test-parent': { type: 'string' },
     'broker-uid': { type: 'string' },
     'operator-uid': { type: 'string' },
@@ -32,12 +34,16 @@ const { values } = parseArgs({
   strict: true,
   allowPositionals: false,
 });
-if (process.platform !== 'darwin' || process.getuid?.() !== 0) {
+if (
+  !values['authorize-disposable-os-tests'] ||
+  process.platform !== 'darwin' ||
+  process.getuid?.() !== 0
+) {
   console.log(
     JSON.stringify({
       overall: 'NOT VERIFIED',
       reason:
-        'Requires an administrator-run macOS session with existing dedicated identities and protected runtime. No changes performed.',
+        'Requires explicit --authorize-disposable-os-tests and an administrator-run macOS session with existing dedicated identities and protected runtime. No changes performed.',
     }),
   );
   process.exit(2);
@@ -62,6 +68,25 @@ if (
   !realpathSync(import.meta.filename).startsWith(`${runtime}/`)
 )
   throw new Error('Use the administrator-installed runtime and harness.');
+// Check every ancestor before the first privileged mkdir/chown. Checking only
+// test-parent's leaf would permit replacement through an attacker-writable parent.
+const protectedInputs = [
+  runtime,
+  parent,
+  process.execPath,
+  import.meta.filename,
+  join(runtime, 'native/bin/agentmind-peer'),
+];
+const inspected = [];
+for (const path of protectedInputs) {
+  if (/[\r\n\0]/.test(path)) throw new Error('Invalid protected path');
+  rootOwnedPath(path);
+  for (let ancestor = path; ; ancestor = dirname(ancestor)) {
+    inspected.push(ancestor);
+    if (ancestor === dirname(ancestor)) break;
+  }
+}
+verifyPaths(join(runtime, 'native/bin/agentmind-peer'), [...new Set(inspected)]);
 const pstat = lstatSync(parent);
 if (!pstat.isDirectory() || pstat.uid !== 0 || pstat.mode & 0o022)
   throw new Error('Test parent must already be root-owned and non-writable by service identities.');
@@ -79,6 +104,7 @@ for (const id of [broker, operator, agent, other]) account(id);
 const root = mkdtempSync(join(parent, 'agentmind-sec01-os-'));
 chmodSync(root, 0o711);
 const results = [];
+const workerEvidence = [];
 let server;
 let passed = false;
 const workspaces = [];
@@ -106,10 +132,37 @@ const job = (uid, input) => {
     },
   );
   if (child.status !== 0) throw new Error('Isolated OS worker failed.');
-  return JSON.parse(child.stdout);
+  const result = JSON.parse(child.stdout);
+  if (result.executing_uid !== uid || result.executing_euid !== uid)
+    throw new Error('Worker OS identity mismatch');
+  workerEvidence.push({
+    uid: result.executing_uid,
+    euid: result.executing_euid,
+    kind: result.operation,
+    target: input.path?.split('/').pop() ?? input.request?.op ?? null,
+    rejection_layer: result.rejection_layer ?? null,
+    error_code: result.error_code ?? null,
+    denied: result.denied ?? null,
+    rpc_ok: result.ok ?? null,
+  });
+  return result;
 };
 const assert = (name, value) => {
-  results.push({ name, status: value ? 'OS LEVEL VERIFIED' : 'FAIL' });
+  const osDenial =
+    /write denied|replacement.*denied|content write denied|read denied|unreadable|connect denied by OS|creation denied by OS/.test(
+      name,
+    );
+  results.push({
+    name,
+    status: value ? 'PASS' : 'FAIL',
+    layer: osDenial ? 'C_OS_PERMISSION' : 'B_OS_PRINCIPALS_WITH_APPLICATION_CHECK',
+    scenario_principals: { broker, operator, agent, other },
+    identity_evidence:
+      'Exact invoking UID/EUID and OS/application rejection category are recorded per call in worker_evidence.',
+    expected: 'Specified assertion holds',
+    actual: value ? 'Assertion observed' : 'Assertion failed',
+    verification_scope: 'DISPOSABLE_ONLY; not actual human presence or live deployment',
+  });
   if (!value) throw new Error(`Assertion failed: ${name}`);
 };
 let client;
@@ -182,6 +235,7 @@ try {
     JSON.stringify(
       validateBrokerConfig({
         schema_version: 1,
+        deployment_id: randomUUID(),
         broker_uid: broker,
         operator_gid: opgid,
         runtime_root: runtime,
@@ -249,9 +303,21 @@ try {
     job(agent, { kind: 'deny-read', path: join(data, 'registry.db') }).denied,
   );
   assert(
-    'operator socket access denied by OS',
-    !rpc(agent, 'operator', 'operator_prepare', {}, 'a').ok,
+    'operator socket connect denied by OS',
+    job(agent, { kind: 'deny-connect', path: join(sockets, 'operator/operator.sock') }).denied,
   );
+  for (const [name, path] of [
+    ['registry parent replacement', data],
+    ['broker configuration replacement', config],
+    ['broker executable replacement', join(runtime, 'packages/mcp-server/dist/broker.js')],
+    ['helper replacement', join(runtime, 'native/bin/agentmind-peer')],
+  ])
+    assert(`${name} denied`, job(agent, { kind: 'deny-replace', path }).denied);
+  assert(
+    'journal path creation denied by OS',
+    job(agent, { kind: 'deny-symlink', path: join(data, 'registry.db-journal') }).denied,
+  );
+
   assert(
     'privileged distribution denied to agent',
     !rpc(agent, 'agent', 'distribution_plan', { target: 'all' }).ok,
@@ -411,17 +477,24 @@ try {
   passed = true;
   console.log(
     JSON.stringify({
-      overall: 'OS LEVEL VERIFIED',
+      overall: 'DISPOSABLE_OS_ACCEPTANCE_PASSED',
+      deployment_verification: 'NOT_VERIFIED',
       disposable: true,
       actual_human_presence: 'NOT VERIFIED (isolated operator-process fixtures)',
       native_cli_discovery: 'NOT VERIFIED',
       deployed_on_actual_host: false,
       results,
+      worker_evidence: workerEvidence,
     }),
   );
-} catch (e) {
+} catch {
   console.log(
-    JSON.stringify({ overall: 'FAIL', reason: String(e.message).slice(0, 200), results }),
+    JSON.stringify({
+      overall: 'FAIL',
+      reason: 'Disposable verification failed; administrator inspection required.',
+      results,
+      worker_evidence: workerEvidence,
+    }),
   );
   process.exitCode = 1;
 } finally {

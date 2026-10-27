@@ -453,3 +453,126 @@ it('scopes authoring context and proposal reads and exposes no privileged author
     expect(() => f.call(op, {})).toThrow();
   expect(f.call('skill_authoring_list')).toMatchObject({ proposals: [] });
 });
+
+it('records protected target/digest/evaluation, authenticated channel and request identity in immutable security audit', () => {
+  const f = fixture();
+  const p = f.candidate();
+  const prepared = f.prepare({
+    kind: 'skill',
+    request: { action: 'approve', version_id: p.version.id },
+  });
+  f.commit(prepared);
+  const events = f.db
+    .prepare(
+      'SELECT s.*,a.uid,a.gid,a.result FROM broker_security_events s JOIN broker_audit a ON a.id=s.audit_id WHERE request_id=? ORDER BY a.created_at,a.id',
+    )
+    .all(prepared.challenge_id) as {
+    version_id: string;
+    content_digest: string;
+    evaluation_id: string;
+    uid: number;
+    channel: string;
+    action: string;
+    result: string;
+  }[];
+  expect(events).toHaveLength(3);
+  expect(
+    events.every(
+      (e) =>
+        e.version_id === p.version.id &&
+        e.content_digest === p.version.content_hash &&
+        e.evaluation_id &&
+        e.uid === 202 &&
+        e.channel === 'operator' &&
+        e.action === 'approve',
+    ),
+  ).toBe(true);
+  expect(events.some((e) => e.result === 'applied')).toBe(true);
+  expect(() => f.db.exec("UPDATE broker_security_events SET action='forged'")).toThrow('immutable');
+  expect(() => f.db.exec('DELETE FROM broker_security_events')).toThrow('immutable');
+  expect(() =>
+    f.db.exec(
+      'INSERT OR REPLACE INTO broker_security_events SELECT * FROM broker_security_events LIMIT 1',
+    ),
+  ).toThrow('immutable');
+});
+it('security audit failure prevents approval and preserves the candidate without reusing a consumed review', () => {
+  const f = fixture();
+  const p = f.candidate();
+  const review = f.prepare({
+    kind: 'skill',
+    request: { action: 'approve', version_id: p.version.id },
+  });
+  f.db.exec(
+    "CREATE TRIGGER inject_security_audit BEFORE INSERT ON broker_security_events WHEN NEW.action='approve' AND (SELECT result FROM broker_audit WHERE id=NEW.audit_id)='applied' BEGIN SELECT RAISE(ABORT,'audit fault');END;",
+  );
+  expect(() => f.commit(review)).toThrow('audit fault');
+  expect(
+    (f.call('skill_get', { version_id: p.version.id }) as { state: { status: string } }).state
+      .status,
+  ).toBe('candidate');
+  f.db.exec('DROP TRIGGER inject_security_audit');
+  expect(() => f.commit(review)).toThrow(/consumed|review/i);
+});
+it('forged operator payload remains a scoped denied audit event, not authorization', () => {
+  const f = fixture();
+  expect(() =>
+    f.call('operator_commit', { uid: 202, role: 'operator', confirmation: 'yes' }),
+  ).toThrow();
+  const row = f.db
+    .prepare(
+      "SELECT s.channel,s.failure_code,a.uid,a.operation,a.project FROM broker_security_events s JOIN broker_audit a ON a.id=s.audit_id WHERE a.result='denied' ORDER BY a.rowid DESC LIMIT 1",
+    )
+    .get();
+  expect(row).toMatchObject({
+    channel: 'agent',
+    failure_code: 'REQUEST_DENIED',
+    uid: 203,
+    operation: 'operator_commit',
+    project: 'a',
+  });
+});
+it('protected audit inspection is operator-only and project-scoped; it never yields grants', () => {
+  const f = fixture();
+  const p = f.candidate();
+  const prepared = f.prepare({
+    kind: 'skill',
+    request: { action: 'approve', version_id: p.version.id },
+  });
+  f.commit(prepared);
+  expect(() => f.call('operator_audit', {})).toThrow();
+  const read = f.operator('operator_audit', { request_id: prepared.challenge_id }) as {
+    items: { content_digest: string; uid: number }[];
+  };
+  expect(read.items).toHaveLength(3);
+  expect(
+    read.items.every((r) => r.content_digest === p.version.content_hash && r.uid === 202),
+  ).toBe(true);
+  expect(() => f.operator('operator_audit', { limit: 999 })).toThrow();
+  expect(() => f.operator('operator_audit', {}, 202, 'b')).toThrow();
+});
+it('changing deployment identity invalidates old approval authority without relabeling history', () => {
+  const f = fixture();
+  const p = f.candidate();
+  f.commit(f.prepare({ kind: 'skill', request: { action: 'approve', version_id: p.version.id } }));
+  const otherEpoch = new BrokerService(
+    f.db,
+    validateBrokerConfig({ ...f.config, deployment_id: '9f903ed1-c682-4d50-acb9-cacb93099d1a' }),
+  );
+  expect(() =>
+    otherEpoch.handle(
+      'operator',
+      { uid: 202, gid: 20 },
+      {
+        schema_version: 1,
+        op: 'operator_prepare',
+        project: 'a',
+        input: { kind: 'skill', request: { action: 'promote', version_id: p.version.id } },
+      },
+    ),
+  ).toThrow(/deployment|authority/);
+  expect(
+    (f.call('skill_get', { version_id: p.version.id }) as { state: { status: string } }).state
+      .status,
+  ).toBe('approved');
+});

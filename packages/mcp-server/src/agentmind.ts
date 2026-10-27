@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { AgentMindError, inspectRegistry } from '@agentmind/core';
+import { AgentMindError, inspectProtectedDeployment, inspectRegistry } from '@agentmind/core';
 import { DAILY_DOMAINS, dailyHelp, runDailyCLI } from './daily/cli.js';
 import { runtimeDoctor } from './installer/doctor.js';
 import { diagnosticText } from './installer/files.js';
@@ -23,6 +23,7 @@ Usage: agentmind setup|status|doctor|repair|update|uninstall [options]
   --apply                      Explicit consent to configuration/owned router changes
   --json                       Stable JSON only on stdout; secrets/controls remain sanitized
   --verbose                    Include diagnostic details, never raw config/environment
+  --protected-config PATH      Doctor: read-only protected deployment breakdown; no service start
   --connect                    Doctor: explicitly start enrolled MCP; can initialize/migrate SQLite
   --native --allow-model       Doctor: explicit opt-in to a disposable native Scenario A probe
   --codex PATH --claude PATH --gemini PATH  Official executable overrides
@@ -47,6 +48,7 @@ async function main() {
       help: { type: 'boolean', short: 'h' },
       cli: { type: 'string' },
       'project-root': { type: 'string' },
+      'protected-config': { type: 'string' },
       db: { type: 'string' },
       scope: { type: 'string', default: 'project' },
       'dry-run': { type: 'boolean' },
@@ -82,6 +84,17 @@ async function main() {
       'INSTALLER_ARGUMENTS',
       'Use --help; mutations need --apply, native model probes need --native --allow-model.',
     );
+  if (v['protected-config']) {
+    if (action !== 'doctor' || v.connect || v.native || v.apply)
+      throw new AgentMindError(
+        'INSTALLER_ARGUMENTS',
+        'Protected diagnostic is read-only and cannot combine startup/native/apply.',
+      );
+    const result = inspectProtectedDeployment(v['protected-config']);
+    process.stdout.write(`${diagnosticText(result, !v.json)}\n`);
+    process.exitCode = result.checks.some((c) => c.status === 'FAIL') ? 7 : 2;
+    return;
+  }
   const base = fileURLToPath(new URL('.', import.meta.url));
   const service = new UnifiedInstaller({
     root: v['project-root'] ?? process.cwd(),

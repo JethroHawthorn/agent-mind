@@ -16,14 +16,14 @@
     "verify:cli": "node scripts/verify-cli.mjs",
     "verify:experience-cli": "node scripts/verify-cli.mjs --experiences",
     "verify:skills-cli": "node scripts/verify-skills.mjs",
-    "test:e2e": "pnpm build && vitest run tests/integration/learning-e2e.test.ts tests/unit/skills-evidence.test.ts tests/integration/continuous-learning.test.ts tests/unit/continuous-learning.test.ts tests/integration/retrieval.test.ts tests/unit/routing.test.ts tests/unit/routing-quality.test.ts tests/unit/codex-setup.test.ts tests/integration/codex-daily.test.ts tests/integration/claude-daily.test.ts tests/unit/claude-setup.test.ts tests/unit/gemini-setup.test.ts tests/integration/gemini-daily.test.ts tests/unit/gemini-migration.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/integration/daily-workflow.test.ts",
+    "test:e2e": "pnpm build && vitest run tests/integration/learning-e2e.test.ts tests/unit/skills-evidence.test.ts tests/integration/continuous-learning.test.ts tests/unit/continuous-learning.test.ts tests/integration/retrieval.test.ts tests/unit/routing.test.ts tests/unit/routing-quality.test.ts tests/unit/codex-setup.test.ts tests/integration/codex-daily.test.ts tests/integration/claude-daily.test.ts tests/unit/claude-setup.test.ts tests/unit/gemini-setup.test.ts tests/integration/gemini-daily.test.ts tests/unit/gemini-migration.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/integration/daily-workflow.test.ts tests/unit/knowledge-migration.test.ts",
     "skill:install": "node scripts/install-reflect.mjs",
     "lint": "biome check --error-on-warnings .",
     "format:check": "biome format .",
     "format": "biome check --write .",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm smoke",
     "build:peer": "node scripts/build-peer.mjs",
-    "test:broker": "pnpm build && native/bin/agentmind-peer selftest && vitest run tests/unit/broker.test.ts tests/unit/broker-publication.test.ts tests/unit/broker-deployment.test.ts tests/integration/broker-native.test.ts",
+    "test:broker": "pnpm build && native/bin/agentmind-peer selftest && vitest run tests/unit/broker.test.ts tests/unit/broker-publication.test.ts tests/unit/broker-deployment.test.ts tests/integration/broker-native.test.ts tests/unit/protected-runner.test.ts tests/unit/peer-build.test.ts tests/unit/protected-cli-environment.test.ts tests/unit/knowledge-migration.test.ts",
     "broker:deployment": "node scripts/broker-deployment.mjs",
     "verify:broker-os": "node scripts/verify-broker-os.mjs",
     "benchmark:duplicates": "pnpm build && vitest run tests/performance/duplicates.test.ts",
@@ -37,7 +37,9 @@
     "verify:gemini-daily": "node scripts/verify-gemini-daily.mjs",
     "agentmind": "node packages/mcp-server/dist/agentmind.js",
     "benchmark:daily": "pnpm build && vitest run tests/performance/daily-workflow.test.ts --maxWorkers=1 --no-file-parallelism",
-    "benchmark:installer": "pnpm build && vitest run tests/performance/installer.test.ts --maxWorkers=1 --no-file-parallelism"
+    "benchmark:installer": "pnpm build && vitest run tests/performance/installer.test.ts --maxWorkers=1 --no-file-parallelism",
+    "benchmark:broker-security": "pnpm build && vitest run tests/performance/broker-security.test.ts --maxWorkers=1 --no-file-parallelism",
+    "broker:migrate": "node packages/mcp-server/dist/knowledge-migration.js"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",

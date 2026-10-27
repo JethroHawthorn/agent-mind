@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
-import { chmodSync, chownSync, lstatSync, mkdirSync, unlinkSync } from 'node:fs';
+import { chmodSync, chownSync, existsSync, lstatSync, mkdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { parseArgs } from 'node:util';
@@ -8,11 +8,14 @@ import {
   BrokerService,
   checkPublication,
   checkRegistry,
+  initializeProtectedRegistry,
   loadProtectedConfig,
   openDatabase,
+  openDatabaseReadOnly,
   required,
   safeError,
   verifyPaths,
+  verifyProtectedRegistry,
 } from '@agentmind/core';
 
 async function main() {
@@ -27,6 +30,18 @@ async function main() {
   const helper = join(config.runtime_root, 'native/bin/agentmind-peer');
   for (const project of config.projects)
     if (project.distribution === 'protected') checkPublication(config, project, helper);
+  const registryPath = join(config.registry_directory, 'registry.db');
+  const freshRegistry = !existsSync(registryPath);
+  // Never run write-capable migrations against an imported agent-writable SQLite
+  // schema. SQLite triggers themselves are executable state-changing policy.
+  if (!freshRegistry) {
+    const prior = openDatabaseReadOnly(registryPath);
+    try {
+      verifyProtectedRegistry(prior, required(config.deployment_id));
+    } finally {
+      prior.close();
+    }
+  }
   if (values.preflight) {
     console.log(
       JSON.stringify({
@@ -56,7 +71,8 @@ async function main() {
   )
     throw new Error('Unsafe operator directory');
   verifyPaths(helper, [operatorDirectory]);
-  const db = openDatabase(join(config.registry_directory, 'registry.db'));
+  const db = openDatabase(registryPath);
+  if (freshRegistry) initializeProtectedRegistry(db, required(config.deployment_id));
   const broker = new BrokerService(db, config, helper);
   checkRegistry(config, helper);
   const children: ChildProcessWithoutNullStreams[] = [];
@@ -93,7 +109,13 @@ async function main() {
     });
     children.push(child);
     child.stdin.on('error', () => {});
-    child.stderr.resume();
+    const diagnostics = createInterface({ input: child.stderr, crlfDelay: Infinity });
+    diagnostics.on('line', (line) => {
+      if (line === 'BROKER_PEER_CREDENTIALS_UNAVAILABLE')
+        console.error('[agentmind] BROKER_PEER_CREDENTIALS_UNAVAILABLE');
+      else if (/^BROKER_SOCKET_START_FAILED errno=\d{1,4}$/.test(line))
+        console.error('[agentmind] BROKER_SOCKET_START_FAILED');
+    });
     child.on('error', () => {
       process.exitCode = 1;
       close();

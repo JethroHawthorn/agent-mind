@@ -4,6 +4,8 @@
 #include <sys/socket.h>
 #include <sys/file.h>
 #include <fcntl.h>
+#include <dirent.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -74,7 +76,17 @@ int main(int argc,char **argv) {
 #ifndef __APPLE__
  (void)argc;(void)argv;fprintf(stderr,"PROTECTED_PLATFORM_UNSUPPORTED\n");return 2;
 #endif
+ /* Close inherited authority other than the three explicit supervisor streams. */
+#ifdef __APPLE__
+ DIR *fds=opendir("/dev/fd");if(!fds)return 1;int inventory=dirfd(fds);
+ for(;;){errno=0;struct dirent *entry=readdir(fds);if(!entry){if(errno){closedir(fds);return 1;}break;}
+  char *end;long fd=strtol(entry->d_name,&end,10);
+  if(*entry->d_name&&!*end&&fd>=3&&fd<=INT_MAX&&fd!=inventory)close((int)fd);
+ }
+ closedir(fds);
+#endif
  signal(SIGPIPE,SIG_IGN);
+ if(argc==2&&!strcmp(argv[1],"selftest-fds")) {return fcntl(3,F_GETFD)==-1&&errno==EBADF?0:1;}
  if(argc==2&&!strcmp(argv[1],"selftest-invalid")) {
   uid_t u;gid_t g;return peer(-1,&u,&g)==-1?0:1;
  }
@@ -125,7 +137,7 @@ int main(int argc,char **argv) {
   struct timeval send_timeout={3,0};
   if(setsockopt(fd,SOL_SOCKET,SO_SNDTIMEO,&send_timeout,sizeof(send_timeout))){close(fd);continue;}
   uid_t u;gid_t g;timeout_ms=3000;
-  if(peer(fd,&u,&g)) {close(fd);continue;}
+  if(peer(fd,&u,&g)) {fputs("BROKER_PEER_CREDENTIALS_UNAVAILABLE\n",stderr);close(fd);continue;}
   int n=line(fd,input,REQUEST);if(n<0){close(fd);continue;}
   printf("{\"uid\":%u,\"gid\":%u,\"hex\":\"",(unsigned)u,(unsigned)g);
   for(int i=0;i<n;i++)printf("%02x",(unsigned char)input[i]);puts("\"}");fflush(stdout);

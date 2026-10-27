@@ -22,6 +22,12 @@ import { SkillReviewService } from '../skill-review.js';
 import { SkillStore } from '../skill-store.js';
 import { SkillUsageService } from '../skill-usage.js';
 import {
+  migrateBrokerSecurityAudit,
+  persistSecurityAudit,
+  type SecurityAuditContext,
+} from './audit.js';
+import { importKnowledge, migrateKnowledgeImport } from './knowledge-import.js';
+import {
   type BrokerConfig,
   denied,
   type Peer,
@@ -96,6 +102,7 @@ export const agentOperations = [
 ] as const;
 
 export const operatorQueryOperations = [
+  'operator_audit',
   'skill_route',
   'skill_discover',
   'skill_load',
@@ -170,6 +177,8 @@ export class BrokerService {
   ) {
     validateBrokerConfig(config);
     migrateBroker(db);
+    migrateBrokerSecurityAudit(db);
+    migrateKnowledgeImport(db);
     migrateRetrieval(db);
     this.scopes = new Map(
       config.projects.map((p) => {
@@ -198,7 +207,28 @@ export class BrokerService {
       return this.dispatch(channel, peer, input);
     } catch (error) {
       try {
-        this.audit(peer, '<denied>', 'request', 'denied');
+        const parsed = requestSchema.safeParse(input);
+        const op =
+          parsed.success && /^[a-z_]{1,64}$/.test(parsed.data.op)
+            ? parsed.data.op
+            : 'malformed_request';
+        const auth = (() => {
+          try {
+            return principal(
+              this.config,
+              channel,
+              peer,
+              parsed.success ? parsed.data.project : undefined,
+            ).project.name;
+          } catch {
+            return '<denied>';
+          }
+        })();
+        this.audit(peer, auth, op, 'denied', {
+          channel,
+          action: op,
+          failure_code: 'REQUEST_DENIED',
+        });
       } catch {}
       throw error;
     }
@@ -210,6 +240,19 @@ export class BrokerService {
     const p = parsed.data;
     const auth = principal(this.config, channel, peer, p.project);
     const scope = required(this.scopes.get(auth.project.name));
+    if (p.op === 'knowledge_import') {
+      if (channel !== 'agent')
+        denied(
+          'Logical migration uses nonprivileged runner staging, never operator approval authority.',
+        );
+      return this.db
+        .transaction(() => {
+          const result = importKnowledge(this.db, scope, auth.source, peer.uid, p.input);
+          this.audit(peer, auth.project.name, 'knowledge_import', 'unverified-staging');
+          return result;
+        })
+        .immediate();
+    }
     if (
       [
         'skill_route',
@@ -225,11 +268,29 @@ export class BrokerService {
         if (this.retrievalServices.size >= 16) this.retrievalServices.clear();
         this.retrievalServices.set(scope.id, retrieval);
       }
-      if (p.op === 'skill_route') return retrieval.route(p.input);
-      if (p.op === 'skill_discover') return retrieval.discover(p.input);
-      if (p.op === 'skill_load') return retrieval.load(p.input);
-      if (p.op === 'skill_resources') return retrieval.resources(p.input);
-      return retrieval.resource(p.input);
+      return this.db.transaction(() => {
+        const result =
+          p.op === 'skill_route'
+            ? retrieval.route(p.input)
+            : p.op === 'skill_discover'
+              ? retrieval.discover(p.input)
+              : p.op === 'skill_load'
+                ? retrieval.load(p.input)
+                : p.op === 'skill_resources'
+                  ? retrieval.resources(p.input)
+                  : retrieval.resource(p.input);
+        if (p.op === 'skill_route' || p.op === 'skill_discover') {
+          for (const item of (result as { skills: { active_version_id: string }[] }).skills)
+            this.protectedApproval(auth.project.name, item.active_version_id);
+        } else {
+          const skill = new SkillStore(this.db, scope).getIdentity(
+            (p.input as { skill_id: string }).skill_id,
+          );
+          if (!skill.active_version_id) denied('No active protected version.');
+          this.protectedApproval(auth.project.name, skill.active_version_id);
+        }
+        return result;
+      })();
     }
     if (['review_queue', 'review_get', 'review_evidence', 'review_diff'].includes(p.op)) {
       const queue = new LearningReviewService(this.db, scope);
@@ -237,6 +298,33 @@ export class BrokerService {
       if (p.op === 'review_get') return queue.get(p.input);
       if (p.op === 'review_evidence') return queue.evidence(p.input);
       return queue.diff(p.input);
+    }
+    if (p.op === 'operator_audit') {
+      if (channel !== 'operator')
+        denied('Protected audit inspection requires the operator channel.');
+      const filter = z
+        .strictObject({
+          limit: z.number().int().min(1).max(20).default(10),
+          offset: z.number().int().min(0).max(10000).default(0),
+          request_id: z.uuid().optional(),
+        })
+        .parse(p.input ?? {});
+      const rows = this.db
+        .prepare(
+          `SELECT a.id,a.uid,a.gid,a.operation,a.result,a.created_at,s.request_id,s.channel,s.action,s.version_id,s.content_digest,s.evaluation_id,s.review_digest,s.failure_code,s.policy_version,s.deployment_id FROM broker_audit a LEFT JOIN broker_security_events s ON s.audit_id=a.id WHERE a.project=? ${filter.request_id ? 'AND s.request_id=?' : ''} ORDER BY a.rowid DESC LIMIT ? OFFSET ?`,
+        )
+        .all(
+          auth.project.name,
+          ...(filter.request_id ? [filter.request_id] : []),
+          filter.limit + 1,
+          filter.offset,
+        );
+      return {
+        items: rows.slice(0, filter.limit),
+        next_offset: rows.length > filter.limit ? filter.offset + filter.limit : null,
+        actor_authentication: 'KERNEL_PEER_UID; not proof of human presence',
+        historical_details: 'Legacy rows may have null extended audit fields.',
+      };
     }
     if (p.op === 'review_handoff') {
       if (channel !== 'operator') denied('Handoff is an operator diagnostic.');
@@ -439,7 +527,13 @@ export class BrokerService {
               binding,
               Date.now() + 300000,
             );
-          this.audit(peer, auth.project.name, 'operator_prepare', 'prepared');
+          this.audit(
+            peer,
+            auth.project.name,
+            'operator_prepare',
+            'prepared',
+            this.securityContext(auth.project.name, channel, id, operation, digest),
+          );
         })
         .immediate();
       return {
@@ -479,7 +573,19 @@ export class BrokerService {
         this.db
           .prepare('UPDATE broker_challenges SET consumed=1 WHERE id=?')
           .run(commit.challenge_id);
-        this.audit(peer, auth.project.name, 'operator_commit', 'claimed');
+        this.audit(
+          peer,
+          auth.project.name,
+          'operator_commit',
+          'claimed',
+          this.securityContext(
+            auth.project.name,
+            channel,
+            commit.challenge_id,
+            operationSchema.parse(JSON.parse(row.input_json)),
+            row.digest,
+          ),
+        );
         return row;
       })
       .immediate();
@@ -505,7 +611,19 @@ export class BrokerService {
           scope,
           this.nativeHelper,
         ).commit(operation.request, grant);
-      this.audit(peer, auth.project.name, operation.kind, 'applied');
+      this.audit(
+        peer,
+        auth.project.name,
+        operation.kind,
+        'applied',
+        this.securityContext(
+          auth.project.name,
+          channel,
+          commit.challenge_id,
+          operation,
+          saved.digest,
+        ),
+      );
       return result;
     };
     return operation.kind === 'distribution' ? apply() : this.db.transaction(apply).immediate();
@@ -548,22 +666,72 @@ export class BrokerService {
         "SELECT metadata_json FROM skill_operator_events WHERE project_id=? AND version_id=? AND review_id=? AND action='approve'",
       )
       .get(scope.id, version, r.state.review_id) as { metadata_json: string } | undefined;
+    const sealed = this.db
+      .prepare(
+        `SELECT a.uid FROM broker_security_events s JOIN broker_audit a ON a.id=s.audit_id WHERE a.project=? AND a.result='applied' AND s.channel='operator' AND s.action='approve' AND s.version_id=? AND s.content_digest=? AND s.evaluation_id=? AND s.deployment_id=?`,
+      )
+      .all(
+        project,
+        version,
+        r.version.content_hash,
+        r.state.latest_evaluation_id,
+        this.config.deployment_id ?? 'unverified-unit-fixture',
+      ) as { uid: number }[];
+    if (
+      !sealed.some((a) =>
+        this.config.operators.some((o) => o.uid === a.uid && o.projects.includes(project)),
+      )
+    )
+      denied(
+        'Approval has no authenticated audit in this protected deployment; imported metadata is not authority.',
+      );
     if (!event)
       denied(
         'A protected broker approval is required. Legacy approvals are not upgraded automatically.',
       );
-    const meta = JSON.parse(event.metadata_json) as { boundary?: string; broker_peer?: Peer };
-    if (
-      meta.boundary !== 'os-peer-v1' ||
-      !this.config.operators.some(
-        (o) => o.uid === meta.broker_peer?.uid && o.projects.includes(project),
-      )
-    )
-      denied('Approval lacks protected operator provenance.');
+    // Authority comes from the exact applied audit in this protected deployment,
+    // not an imported caller-writable metadata marker. Explicit operator re-review
+    // can seal an already-approved artifact without rewriting historical records.
   }
-  private audit(peer: Peer, project: string, operation: string, result: string) {
-    this.db
-      .prepare('INSERT INTO broker_audit VALUES(?,?,?,?,?,?,?)')
-      .run(randomUUID(), peer.uid, peer.gid, project, operation, result, new Date().toISOString());
+  private securityContext(
+    project: string,
+    channel: 'agent' | 'operator',
+    requestId: string,
+    operation: z.infer<typeof operationSchema>,
+    digest: string,
+  ): SecurityAuditContext {
+    const context: SecurityAuditContext = {
+      channel,
+      request_id: requestId,
+      action: operation.kind === 'skill' ? operation.request.action : operation.kind,
+      review_digest: digest,
+    };
+    if (operation.kind === 'skill') {
+      const scope = required(this.scopes.get(project));
+      const r = new SkillStore(this.db, scope).getVersion(operation.request.version_id);
+      context.version_id = r.version.id;
+      context.content_digest = r.version.content_hash;
+      context.evaluation_id = r.state.latest_evaluation_id ?? undefined;
+    }
+    return context;
+  }
+  private audit(
+    peer: Peer,
+    project: string,
+    operation: string,
+    result: string,
+    context?: SecurityAuditContext,
+  ) {
+    this.db.transaction(() => {
+      const id = randomUUID();
+      this.db
+        .prepare('INSERT INTO broker_audit VALUES(?,?,?,?,?,?,?)')
+        .run(id, peer.uid, peer.gid, project, operation, result, new Date().toISOString());
+      if (context)
+        persistSecurityAudit(this.db, id, {
+          ...context,
+          deployment_id: this.config.deployment_id ?? 'unverified-unit-fixture',
+        });
+    })();
   }
 }
