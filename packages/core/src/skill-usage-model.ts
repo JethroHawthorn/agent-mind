@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type SourceAgent, sourceAgentSchema } from './source-agent.js';
 
 export const usageEventTypeSchema = z.enum([
   'installed',
@@ -25,7 +26,7 @@ export const usageReportSchema = z.strictObject({
 export const usageQuerySchema = z.strictObject({
   skill_id: z.uuid().optional(),
   version_id: z.uuid().optional(),
-  source_cli: z.enum(['codex', 'claude', 'unknown']).optional(),
+  source_cli: sourceAgentSchema.optional(),
   event_type: usageEventTypeSchema.optional(),
   since: z.iso.datetime({ offset: true }).optional(),
   until: z.iso.datetime({ offset: true }).optional(),
@@ -43,7 +44,7 @@ export const usageRetentionSchema = z.strictObject({
   batch_size: z.number().int().min(1).max(1000).default(1000),
 });
 export type UsageReport = z.infer<typeof usageReportSchema>;
-export type UsageSource = 'codex' | 'claude' | 'unknown';
+export type UsageSource = SourceAgent;
 export type UsageEvidence = {
   category:
     | 'llm_reported'

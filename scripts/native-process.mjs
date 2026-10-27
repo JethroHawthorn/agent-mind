@@ -49,11 +49,13 @@ function progressSummary(output) {
   return progress;
 }
 
-export function nativeProcess(command, args, root, timeoutMs = 40000) {
+/** @param {Record<string, string | undefined> | undefined} [env] */
+export function nativeProcess(command, args, root, timeoutMs = 40000, env = undefined) {
   return new Promise((resolve) => {
     const started = Date.now();
     const c = spawn(command, args, {
       cwd: root,
+      env,
       detached: process.platform !== 'win32',
       stdio: ['ignore', 'pipe', 'pipe'],
     });

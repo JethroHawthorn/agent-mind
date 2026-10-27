@@ -4,13 +4,14 @@ import Database from 'better-sqlite3';
 import { AgentMindError } from './errors.js';
 import { migrateExperiences } from './experience-migration.js';
 import { migrateExperienceScopeIndex } from './experience-scope-migration.js';
+import { migrateGeminiSources } from './gemini-source-migration.js';
 import { migrateSkillDistribution } from './skill-distribution-migration.js';
 import { migrateSkills } from './skill-migration.js';
 import { migrateSkillOperator } from './skill-operator-migration.js';
 import { migrateSkillDiscovery } from './skill-search-migration.js';
 import { migrateSkillUsage } from './skill-usage-migration.js';
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export function migrate(db: Database.Database): void {
   if (db.inTransaction)
@@ -80,6 +81,7 @@ export function migrate(db: Database.Database): void {
       if (version < 7) migrateSkillOperator(db);
       if (version < 8) migrateSkillDistribution(db);
       if (version < 9) migrateSkillUsage(db);
+      if (version < 10) migrateGeminiSources(db);
       const violations = db.pragma('foreign_key_check') as unknown[];
       if (violations.length) {
         throw new AgentMindError(

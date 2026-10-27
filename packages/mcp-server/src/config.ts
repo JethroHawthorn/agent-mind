@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { AgentMindError, resolveProject } from '@agentmind/core';
+import { AgentMindError, resolveProject, sourceAgentSchema } from '@agentmind/core';
 
 export function readConfig(args = process.argv.slice(2)) {
   try {
@@ -28,13 +28,11 @@ export function readConfig(args = process.argv.slice(2)) {
     if (!values['project-root']) throw new Error('missing root');
     const dbPath = values.db ?? join(homedir(), '.agentmind', 'agentmind.db');
     if (!isAbsolute(dbPath)) throw new Error('absolute database path required');
-    const sourceAgent = values['source-agent'];
-    if (sourceAgent !== 'codex' && sourceAgent !== 'claude' && sourceAgent !== 'unknown')
-      throw new Error('invalid source');
+    const sourceAgent = sourceAgentSchema.parse(values['source-agent']);
     return {
       project: resolveProject(values['project-root'], process.cwd(), values['project-key']),
       dbPath,
-      sourceAgent: sourceAgent as 'codex' | 'claude' | 'unknown',
+      sourceAgent,
       health: values.health,
       captureEnabled: !values['disable-experience-capture'],
       proposalEnabled: !values['disable-skill-proposals'],
@@ -49,7 +47,7 @@ export function readConfig(args = process.argv.slice(2)) {
     if (error instanceof AgentMindError) throw error;
     throw new AgentMindError(
       'INVALID_CONFIG',
-      'Use --project-root /absolute/project [--project-key trusted-stable-key] [--db /absolute/memory.db] [--source-agent codex|claude|unknown] [--disable-experience-capture] [--disable-skill-proposals] [--disable-telemetry] [--enable-curator] [--enable-learning] [--enable-authoring] [--enable-retrieval] [--disable-learning-capture] [--health].',
+      'Use --project-root /absolute/project [--project-key trusted-stable-key] [--db /absolute/memory.db] [--source-agent codex|claude|gemini|unknown] [--disable-experience-capture] [--disable-skill-proposals] [--disable-telemetry] [--enable-curator] [--enable-learning] [--enable-authoring] [--enable-retrieval] [--disable-learning-capture] [--health].',
     );
   }
 }

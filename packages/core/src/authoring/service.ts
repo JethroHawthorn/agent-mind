@@ -10,6 +10,7 @@ import { SkillProposalService } from '../skill-proposal.js';
 import { diffSkillFiles } from '../skill-review.js';
 import { SkillStore } from '../skill-store.js';
 import { validateSkillBundle } from '../skill-validation.js';
+import type { SourceAgent } from '../source-agent.js';
 import { agentWrite } from '../write-transaction.js';
 import { authoringWarnings } from './analysis.js';
 import { buildAuthoringContext } from './context.js';
@@ -56,7 +57,7 @@ export class SkillAuthoringService {
   constructor(
     private readonly db: Database.Database,
     scope: ProjectScope,
-    private readonly source: 'codex' | 'claude' | 'unknown' = 'unknown',
+    private readonly source: SourceAgent = 'unknown',
     private readonly enabled = true,
     session: string = randomUUID(),
   ) {

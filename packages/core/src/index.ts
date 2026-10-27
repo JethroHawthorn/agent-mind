@@ -48,4 +48,5 @@ export * from './skill-usage.js';
 export * from './skill-usage-adapters.js';
 export * from './skill-usage-model.js';
 export * from './skill-validation.js';
+export * from './source-agent.js';
 export * from './timestamp.js';

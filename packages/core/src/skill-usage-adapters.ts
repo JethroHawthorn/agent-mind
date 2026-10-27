@@ -10,6 +10,12 @@ import { SkillStore } from './skill-store.js';
 import { SkillUsageService, usageObservationId } from './skill-usage.js';
 
 export const usageCapabilities = Object.freeze({
+  gemini: {
+    adapter: 'explicit-mcp-v1',
+    native_skill_invocation: false,
+    reason:
+      'No native Gemini hook collector is installed or verified. activate_skill reads instructions; it never promotes an AgentMind version or proves task success.',
+  },
   codex: {
     adapter: 'explicit-mcp-v1',
     native_skill_invocation: false,

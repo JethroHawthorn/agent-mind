@@ -617,3 +617,9 @@ P4-001 review fixes and remaining native/OS verification gates are documented in
 Use `pnpm claude --help`, then preview `pnpm claude setup --scope project --project-root /absolute/project --db /absolute/shared/agentmind.db --dry-run --json`. Explicit `--apply` installs only managed MCP/router/enrollment files; status, doctor and uninstall follow the Codex conventions. User registration is supported through the official CLI and stays pinned to the enrolled project. No auth/settings/CLAUDE.md edits or hooks are installed.
 
 See [Claude setup, daily use, native verification and recovery](docs/CLAUDE_DAILY_WORKFLOW.md) and [P4-002 actual implementation evidence](docs/reviews/P4-002_IMPLEMENTATION.md). A configured login is distinct from successful native execution; current probes timed out before model completion. Supervised-mode, OS isolation and behavioral-execution limits remain unchanged.
+
+### P4-003 Gemini integration
+
+`pnpm gemini --help` exposes project/user setup, status, doctor and uninstall. Preview with `pnpm gemini setup --scope project --project-root /absolute/project --db /absolute/shared/agentmind.db --dry-run --json`; writes require explicit `--apply`. The alias is `agentmind`, existing compatible routers are reused read-only, policy restrictions are preserved, and GEMINI.md/hooks/authentication are not edited.
+
+Core schema v10 adds Gemini provenance; take a verified SQLite-consistent backup and stop/restart clients before actual upgrade. Gemini CLI is currently absent, so native authentication, activation and application are NOT VERIFIED. See [Gemini daily setup and recovery](docs/GEMINI_DAILY_WORKFLOW.md) and [actual P4-003 evidence/acceptance](docs/reviews/P4-003_IMPLEMENTATION.md).

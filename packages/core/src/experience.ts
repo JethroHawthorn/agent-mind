@@ -11,12 +11,13 @@ import {
   experienceSearchSchema,
 } from './experience-schemas.js';
 import type { ProjectScope } from './project.js';
+import type { SourceAgent } from './source-agent.js';
 import { agentWrite } from './write-transaction.js';
 
 export type Experience = ExperienceInput & {
   id: string;
   project_id: string;
-  source_agent: 'codex' | 'claude' | 'unknown';
+  source_agent: SourceAgent;
   capture_method: 'explicit';
   approval_status: 'candidate' | 'approved' | 'rejected';
   verification_status: 'unverified';

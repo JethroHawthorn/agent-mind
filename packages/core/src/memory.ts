@@ -5,6 +5,7 @@ import { AgentMindError } from './errors.js';
 import { assertSafeSummary } from './privacy.js';
 import type { ProjectScope } from './project.js';
 import { saveSchema, searchSchema } from './schemas.js';
+import type { SourceAgent } from './source-agent.js';
 import { agentWrite } from './write-transaction.js';
 
 export type Memory = {
@@ -23,7 +24,7 @@ export class MemoryService {
   constructor(
     private readonly db: Database.Database,
     project: ProjectScope,
-    private readonly sourceAgent: 'codex' | 'claude' | 'unknown' = 'unknown',
+    private readonly sourceAgent: SourceAgent = 'unknown',
   ) {
     this.#project = Object.freeze({ ...project });
     db.prepare('INSERT OR IGNORE INTO projects(id, canonical_path) VALUES (?, ?)').run(

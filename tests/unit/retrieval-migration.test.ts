@@ -33,7 +33,7 @@ it('rolls failed additive index migration back without altering core lifecycle d
   expect(
     f.db.prepare("SELECT 1 FROM sqlite_master WHERE name='retrieval_schema'").get(),
   ).toBeUndefined();
-  expect(f.db.pragma('user_version', { simple: true })).toBe(9);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(10);
   expect(f.store.get({ version_id: f.candidate.version.id })).toEqual(before);
   f.db.exec('DROP TABLE skill_version_retrieval_fts');
   migrateRetrieval(f.db);

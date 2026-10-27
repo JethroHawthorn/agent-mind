@@ -480,7 +480,7 @@ it('fails atomically on a schema migration fault and retains core schema compati
   f.db.exec('CREATE TABLE learning_history(unrelated TEXT)');
   expect(() => f.learning.record(input())).toThrow();
   expect(learningStorageExists(f.db)).toBe(false);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(9);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(10);
   f.db.exec('DROP TABLE learning_history');
   expect(f.learning.record(input())).toMatchObject({ stored: true });
 });

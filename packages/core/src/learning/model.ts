@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AgentMindError } from '../errors.js';
 import { type Evidence, evidenceSchema } from '../experience-schemas.js';
+import type { SourceAgent } from '../source-agent.js';
 export const LEARNING_POLICY = 'learning-triage-v1';
 export const signalTypeSchema = z.enum([
   'PROBLEM_SOLVED',
@@ -53,7 +54,7 @@ export const learningActionSchema = z.enum([
 export type SignalInput = z.infer<typeof learningRecordSchema>;
 export type SignalEvidence = z.infer<typeof signalEvidenceSchema>;
 export type SignalOrigin = {
-  source_agent: 'codex' | 'claude' | 'unknown';
+  source_agent: SourceAgent;
   adapter: 'explicit-mcp-v1' | 'explicit-cli-v1' | 'deterministic-records-v1';
   detection_source: 'agent_reported' | 'deterministic' | 'verified_observation';
 };

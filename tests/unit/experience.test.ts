@@ -379,7 +379,7 @@ describe('migration and durability', () => {
     );
     migrate(db);
     migrate(db);
-    expect(db.pragma('user_version', { simple: true })).toBe(9);
+    expect(db.pragma('user_version', { simple: true })).toBe(10);
     expect(new MemoryService(db, project).search({ query: 'SQLite' })).toEqual([memory]);
     const saved = review(service, record(service).id);
     db.close();

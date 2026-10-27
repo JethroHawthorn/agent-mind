@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { sourceAgentSchema } from './source-agent.js';
 
 const id = z.uuid();
 const projectId = z.string().regex(/^[a-f0-9]{64}$/);
@@ -57,7 +58,7 @@ export const skillVersionSchema = z
     description: z.string().trim().min(1).max(1024),
     files: skillFilesSchema,
     content_hash: z.string().regex(/^[a-f0-9]{64}$/),
-    source_agent: z.enum(['codex', 'claude', 'unknown']),
+    source_agent: sourceAgentSchema,
     created_at: timestamp,
   })
   .refine(

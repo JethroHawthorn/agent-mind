@@ -6,6 +6,7 @@ import { hashSkillFiles } from './skill-model.js';
 import { skillProposeSchema } from './skill-requests.js';
 import { SkillStore } from './skill-store.js';
 import { assertValidSkillBundle } from './skill-validation.js';
+import type { SourceAgent } from './source-agent.js';
 import { nextTimestamp } from './timestamp.js';
 import { agentWrite } from './write-transaction.js';
 
@@ -15,7 +16,7 @@ export class SkillProposalService {
   constructor(
     private readonly db: Database.Database,
     project: ProjectScope,
-    private readonly sourceAgent: 'codex' | 'claude' | 'unknown' = 'unknown',
+    private readonly sourceAgent: SourceAgent = 'unknown',
     private readonly enabled = true,
   ) {
     this.#project = Object.freeze({ ...project });

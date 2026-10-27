@@ -3,6 +3,7 @@ import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { z } from 'zod';
 import { AgentMindError } from '../errors.js';
+import { sourceAgentSchema } from '../source-agent.js';
 
 const uid = z.number().int().min(1).max(2147483647);
 const absolute = z
@@ -37,9 +38,7 @@ export const brokerConfigSchema = z.strictObject({
     .min(1)
     .max(64),
   agents: z
-    .array(
-      z.strictObject({ uid, project: z.string(), source: z.enum(['codex', 'claude', 'unknown']) }),
-    )
+    .array(z.strictObject({ uid, project: z.string(), source: sourceAgentSchema }))
     .min(1)
     .max(64),
   operators: z

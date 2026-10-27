@@ -16,7 +16,7 @@
     "verify:cli": "node scripts/verify-cli.mjs",
     "verify:experience-cli": "node scripts/verify-cli.mjs --experiences",
     "verify:skills-cli": "node scripts/verify-skills.mjs",
-    "test:e2e": "pnpm build && vitest run tests/integration/learning-e2e.test.ts tests/unit/skills-evidence.test.ts tests/integration/continuous-learning.test.ts tests/unit/continuous-learning.test.ts tests/integration/retrieval.test.ts tests/unit/routing.test.ts tests/unit/routing-quality.test.ts tests/unit/codex-setup.test.ts tests/integration/codex-daily.test.ts tests/integration/claude-daily.test.ts tests/unit/claude-setup.test.ts",
+    "test:e2e": "pnpm build && vitest run tests/integration/learning-e2e.test.ts tests/unit/skills-evidence.test.ts tests/integration/continuous-learning.test.ts tests/unit/continuous-learning.test.ts tests/integration/retrieval.test.ts tests/unit/routing.test.ts tests/unit/routing-quality.test.ts tests/unit/codex-setup.test.ts tests/integration/codex-daily.test.ts tests/integration/claude-daily.test.ts tests/unit/claude-setup.test.ts tests/unit/gemini-setup.test.ts tests/integration/gemini-daily.test.ts tests/unit/gemini-migration.test.ts",
     "skill:install": "node scripts/install-reflect.mjs",
     "lint": "biome check --error-on-warnings .",
     "format:check": "biome format .",
@@ -32,7 +32,9 @@
     "codex": "node packages/mcp-server/dist/codex.js",
     "verify:codex-daily": "node scripts/verify-codex-daily.mjs",
     "claude": "node packages/mcp-server/dist/claude.js",
-    "verify:claude-daily": "node scripts/verify-claude-daily.mjs"
+    "verify:claude-daily": "node scripts/verify-claude-daily.mjs",
+    "gemini": "node packages/mcp-server/dist/gemini.js",
+    "verify:gemini-daily": "node scripts/verify-gemini-daily.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
