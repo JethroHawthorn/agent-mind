@@ -5,6 +5,7 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { AgentMindError, inspectRegistry } from '@agentmind/core';
+import { DAILY_DOMAINS, dailyHelp, runDailyCLI } from './daily/cli.js';
 import { runtimeDoctor } from './installer/doctor.js';
 import { diagnosticText } from './installer/files.js';
 import { type Action, diagnostic, EXIT, PROVIDERS, type Provider } from './installer/model.js';
@@ -35,6 +36,10 @@ Exit: 0 success, 2 warnings/incomplete, 3 conflict, 4 arguments, 5 dependency,
 `;
 async function main() {
   process.umask(0o077);
+  if (DAILY_DOMAINS.includes(process.argv[2] ?? '')) {
+    await runDailyCLI(process.argv.slice(2));
+    return;
+  }
   const { values: v, positionals } = parseArgs({
     strict: true,
     allowPositionals: true,
@@ -57,7 +62,7 @@ async function main() {
     },
   });
   if (v.help) {
-    process.stdout.write(help);
+    process.stdout.write(`${help}\n${dailyHelp}`);
     return;
   }
   const action = positionals[0],
@@ -192,9 +197,16 @@ main().catch((e) => {
       : (e as NodeJS.ErrnoException).code === 'EACCES' ||
           (e as NodeJS.ErrnoException).code === 'EPERM'
         ? 'INSTALLER_PERMISSION'
-        : 'INSTALLER_INTERNAL';
+        : /^(?:ERR_PARSE_ARGS)/.test((e as NodeJS.ErrnoException).code ?? '')
+          ? ((e as NodeJS.ErrnoException).code ?? 'INSTALLER_ARGUMENTS')
+          : 'INSTALLER_INTERNAL';
   const exit =
     code === 'INSTALLER_ARGUMENTS' ||
+    code === 'DAILY_INVALID_INPUT' ||
+    code === 'DAILY_SCOPE_UNSUPPORTED' ||
+    code === 'REVIEW_INVALID_INPUT' ||
+    code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' ||
+    code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE' ||
     /PROJECT_INVALID|PATH_INVALID|ROUTER_INVALID/.test(code) ||
     e instanceof TypeError
       ? EXIT.invalid
@@ -202,7 +214,7 @@ main().catch((e) => {
         ? EXIT.permission
         : /DEPENDENCY/.test(code)
           ? EXIT.dependency
-          : /CONFLICT|PLAN|BUSY|CONCURRENT|PARTIAL|SCOPE/.test(code)
+          : /CONFLICT|STALE|NOT_FOUND|UNAVAILABLE|PLAN|BUSY|CONCURRENT|PARTIAL|SCOPE/.test(code)
             ? EXIT.conflict
             : EXIT.internal;
   const json = process.argv.includes('--json');
@@ -210,8 +222,9 @@ main().catch((e) => {
     schema_version: 1,
     error: {
       code,
-      message:
-        'Integration operation could not complete safely. Use --help or doctor; existing data/configuration was not force-overwritten.',
+      message: DAILY_DOMAINS.includes(process.argv[2] ?? '')
+        ? 'Daily view/action unavailable or invalid. Use a full scoped ID, refresh a stale review snapshot, or inspect the existing registry with status/doctor. No approval or promotion was performed.'
+        : 'Integration operation could not complete safely. Use --help or doctor; existing data/configuration was not force-overwritten.',
     },
   };
   (json ? process.stdout : process.stderr).write(`${diagnosticText(out)}\n`);

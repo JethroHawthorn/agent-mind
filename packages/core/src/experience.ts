@@ -114,12 +114,14 @@ export class ExperienceService {
     project: ProjectScope,
     private readonly sourceAgent: Experience['source_agent'] = 'unknown',
     private readonly captureEnabled = true,
+    registerProject = true,
   ) {
     this.#project = Object.freeze({ ...project });
-    db.prepare('INSERT OR IGNORE INTO projects(id, canonical_path) VALUES (?, ?)').run(
-      project.id,
-      project.root,
-    );
+    if (registerProject && !db.readonly)
+      db.prepare('INSERT OR IGNORE INTO projects(id, canonical_path) VALUES (?, ?)').run(
+        project.id,
+        project.root,
+      );
   }
 
   record(input: unknown): {
