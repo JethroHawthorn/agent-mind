@@ -2,6 +2,8 @@ import { z } from 'zod';
 export const ROUTING_POLICY = 'context-routing-v1';
 const hints = z.array(z.string().trim().min(1).max(32)).max(3).default([]);
 export const skillRouteSchema = z.strictObject({
+  selection_cards: z.boolean().default(false),
+  expand: z.boolean().default(false),
   context: z.strictObject({
     summary: z.string().trim().min(1).max(500),
     languages: hints,

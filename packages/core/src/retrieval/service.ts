@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 import { AgentMindError } from '../errors.js';
 import type { ProjectScope } from '../project.js';
 import { resolveActiveArtifact } from '../skill-active-artifact.js';
+import { HybridSkillRouter } from './hybrid.js';
 import {
   parseRetrieval,
   RETRIEVAL_POLICY,
@@ -17,12 +18,14 @@ import {
 import { contentPage, resourceDigest } from './projection.js';
 import { retrieveCandidates } from './ranking.js';
 import { SkillRouter } from './routing.js';
+import { skillRouteSchema } from './routing-model.js';
 
 /** No migration, filesystem access, telemetry writes or lifecycle writes occur in this service. */
 export class SkillRetrievalService {
   readonly #scope: ProjectScope;
   readonly #config: RetrievalConfig;
   readonly #router: SkillRouter;
+  readonly #hybrid: HybridSkillRouter;
   constructor(
     private readonly db: Database.Database,
     scope: ProjectScope,
@@ -37,6 +40,23 @@ export class SkillRetrievalService {
         'Invalid trusted retrieval output limits.',
       );
     this.#config = Object.freeze(parsed.data);
+    this.#hybrid = new HybridSkillRouter(
+      db,
+      this.#scope,
+      this.#config.candidate_limit,
+      (id) => {
+        const a = this.artifact({ skill_id: id, offset: 0 });
+        return {
+          skill_id: a.review.identity.id,
+          name: a.review.identity.name,
+          description: a.review.version.description,
+          active_version_id: a.review.version.id,
+          content_digest: a.review.version.content_hash,
+          main: a.review.version.files.find((f) => f.path === 'SKILL.md')?.content ?? '',
+        };
+      },
+      routingConfig,
+    );
     this.#router = new SkillRouter(
       db,
       this.#scope,
@@ -54,8 +74,19 @@ export class SkillRetrievalService {
       routingConfig,
     );
   }
+  route(input: {
+    selection_cards: true;
+    context: unknown;
+    limit?: number;
+    expand?: boolean;
+  }): ReturnType<HybridSkillRouter['route']>;
+  route(input: unknown): ReturnType<SkillRouter['route']>;
   route(input: unknown) {
+    if (parseRetrieval(skillRouteSchema, input).selection_cards) return this.#hybrid.route(input);
     return this.#router.route(input);
+  }
+  selectionCards(input: unknown) {
+    return this.#hybrid.route(input);
   }
   discover(input: unknown) {
     const p = parseRetrieval(skillDiscoverSchema, input),

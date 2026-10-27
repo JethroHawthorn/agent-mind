@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { AgentMindError } from '../errors.js';
+import { migrateHybridDiscovery } from './hybrid-storage.js';
 export function retrievalStorageExists(db: Database.Database) {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name='retrieval_schema'").get()) return false;
   const rows = db.prepare('SELECT version FROM retrieval_schema').all() as { version: number }[];
@@ -20,4 +21,5 @@ export function migrateRetrieval(db: Database.Database) {
  CREATE TRIGGER skill_version_retrieval_insert AFTER INSERT ON skill_versions BEGIN
  INSERT INTO skill_version_retrieval_fts(rowid,name,description,version_id,project_id) SELECT NEW.rowid,k.name,NEW.description,NEW.id,NEW.project_id FROM skills k WHERE k.id=NEW.skill_id AND k.project_id=NEW.project_id;END;`);
   }).immediate();
+  migrateHybridDiscovery(db);
 }

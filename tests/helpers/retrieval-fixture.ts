@@ -12,6 +12,7 @@ export type RetrievalDraft = {
   name: string;
   description: string;
   body?: string;
+  metadata?: Record<string, string>;
   resources?: { path: string; content: string }[];
   activate?: boolean;
   scope?: ProjectScope;
@@ -75,7 +76,13 @@ export function retrievalFixture() {
       files: [
         {
           path: 'SKILL.md',
-          content: `---\nname: ${d.name}\ndescription: ${d.description}\n---\n# Goal\nApply the scoped workflow.\n# When to use\n${d.description}\n# Procedure\n${d.body ?? 'Inspect the named scenario and retain unresolved outcomes.'}\n# Verification\nCheck task-specific acceptance criteria; no verified task success is implied.\n`,
+          content: `---\nname: ${d.name}\ndescription: ${d.description}\n${
+            d.metadata
+              ? `metadata:\n${Object.entries(d.metadata)
+                  .map(([k, v]) => `  ${k}: ${JSON.stringify(v)}`)
+                  .join('\n')}\n`
+              : ''
+          }---\n# Goal\nApply the scoped workflow.\n# When to use\n${d.description}\n# Procedure\n${d.body ?? 'Inspect the named scenario and retain unresolved outcomes.'}\n# Verification\nCheck task-specific acceptance criteria; no verified task success is implied.\n`,
         },
         ...(d.resources ?? []),
       ],

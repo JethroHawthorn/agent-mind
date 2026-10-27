@@ -346,3 +346,54 @@ it('P3-008 CLI accepts bounded route JSON on stdin and refuses override flags an
     run(JSON.stringify({ context: { summary: 'retry' }, project_id: f.otherScope.id })).status,
   ).toBe(1);
 });
+
+it('hybrid cards cross actual MCP stdio and CLI JSON without new privileged tools', async () => {
+  const f = fixture();
+  const a = f.add({
+    ...draft,
+    metadata: {
+      'discovery.aliases': JSON.stringify(['embedded persistence access']),
+      'discovery.preconditions': JSON.stringify(['SQLite lock contention is present.']),
+    },
+  });
+  const c = await connect(f);
+  const r = await call(c, 'skill_route', {
+    selection_cards: true,
+    context: { summary: 'embedded persistence access' },
+  });
+  expect(r.skills[0].active_version_id).toBe(a.version.id);
+  expect(r.skills[0].preconditions).toEqual(['SQLite lock contention is present.']);
+  const cli = spawnSync(
+    process.execPath,
+    [
+      resolve('packages/mcp-server/dist/skill-retrieve.js'),
+      '--project-root',
+      f.root,
+      '--db',
+      f.path,
+      '--route',
+      '--json',
+    ],
+    {
+      cwd: f.root,
+      input: JSON.stringify({
+        selection_cards: true,
+        context: { summary: 'embedded persistence access' },
+      }),
+      encoding: 'utf8',
+      timeout: 10000,
+    },
+  );
+  expect(cli.status).toBe(0);
+  expect(JSON.parse(cli.stdout).skills[0].content_digest).toBe(a.version.content_hash);
+  expect(r.skills[0].content_digest).toBe(a.version.content_hash);
+  const tools = await c.listTools();
+  expect(
+    tools.tools.map((t) => t.name).filter((n) => /approve|promote|rollback|distribute/.test(n)),
+  ).toEqual([]);
+  const invalid = await c.callTool({
+    name: 'skill_route',
+    arguments: { selection_cards: true, context: { summary: 'retry' }, project_id: 'forged' },
+  });
+  expect(invalid.isError).toBe(true);
+});
