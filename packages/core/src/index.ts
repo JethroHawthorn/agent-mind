@@ -28,6 +28,7 @@ export * from './memory.js';
 export { confirmOperatorReview, type OperatorGrant } from './operator-confirmation.js';
 export * from './privacy.js';
 export * from './project.js';
+export * from './registry-diagnostics.js';
 export * from './retrieval/model.js';
 export * from './retrieval/routing-model.js';
 export * from './retrieval/service.js';

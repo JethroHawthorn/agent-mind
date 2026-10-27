@@ -42,6 +42,7 @@ export type GeminiOptions = {
   home?: string;
   systemDefaults?: string;
   systemSettings?: string;
+  plannedSharedRouter?: { root: string; path: string };
   gemini?: string;
 };
 export class GeminiSetup {
@@ -126,6 +127,28 @@ export class GeminiSetup {
     return readBounded(r.root, r.path);
   }
   private routerChoice(): Router {
+    const planned = this.options.plannedSharedRouter;
+    if (planned) {
+      if (
+        planned.root !== this.root ||
+        planned.path !== join(this.root, '.agents/skills/agentmind-router/SKILL.md')
+      )
+        throw new AgentMindError('GEMINI_ROUTER_CONFLICT', 'Invalid planned shared router.');
+      if (
+        this.slots().some((r) => {
+          const t = this.routerRead(r);
+          return t !== null && t !== this.options.router;
+        })
+      )
+        throw new AgentMindError(
+          'GEMINI_ROUTER_CONFLICT',
+          'A discovery tier conflicts with the shared router plan.',
+        );
+      const existing = this.routerRead({ ...planned, owned: false });
+      if (existing !== null && existing !== this.options.router)
+        throw new AgentMindError('GEMINI_ROUTER_CONFLICT', 'Planned shared router conflicts.');
+      return { ...planned, owned: false };
+    }
     const existing = this.slots().filter((r) => this.routerRead(r) !== null);
     if (existing.some((r) => this.routerRead(r) !== this.options.router))
       throw new AgentMindError(
@@ -151,7 +174,7 @@ export class GeminiSetup {
       r.root !== this.root ||
       r.scope !== this.scope ||
       r.database !== this.database ||
-      r.router_content !== this.options.router ||
+      (r.router_content !== this.options.router && r.phase !== 'removed') ||
       !['installing', 'installed', 'removing', 'removed'].includes(r.phase) ||
       JSON.stringify(r.entry) !== JSON.stringify(this.entry()) ||
       !(r.before === null || typeof r.before === 'string') ||
@@ -196,7 +219,12 @@ export class GeminiSetup {
       router = this.routerRead(r.router);
     if (enrollment !== null && enrollment !== r.enrollment)
       throw new AgentMindError('GEMINI_SETUP_CONFLICT', 'Enrollment changed.');
-    if ((router !== null && router !== r.router_content) || (!r.router.owned && router === null))
+    if (
+      (router !== null && router !== r.router_content) ||
+      (!r.router.owned &&
+        router === null &&
+        this.options.plannedSharedRouter?.path !== r.router.path)
+    )
       throw new AgentMindError(
         'GEMINI_ROUTER_CONFLICT',
         'Managed or reused router changed/missing; refresh explicitly.',
@@ -209,7 +237,15 @@ export class GeminiSetup {
     )
       throw new AgentMindError('GEMINI_ROUTER_CONFLICT', 'A conflicting discovery tier appeared.');
   }
-  plan() {
+  plan(installationId?: string) {
+    if (
+      installationId !== undefined &&
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(installationId)
+    )
+      throw new AgentMindError(
+        'GEMINI_SETUP_INVALID',
+        'Installation identity must be a UUID; no caller path fragments are accepted.',
+      );
     const r = this.state(),
       capabilities = geminiCapabilities(this.options.gemini);
     if (capabilities.compatibility === 'FAIL')
@@ -242,7 +278,7 @@ export class GeminiSetup {
     }
     if (readBounded(this.root, this.enrollment) !== null)
       throw new AgentMindError('GEMINI_SETUP_CONFLICT', 'Unowned enrollment exists.');
-    const id = randomUUID(),
+    const id = installationId ?? randomUUID(),
       router = this.routerChoice();
     const receipt: Receipt = {
       schema: 1,
@@ -336,9 +372,10 @@ export class GeminiSetup {
       );
     replaceFile(this.settingsRoot(), this.config, before, after);
   }
-  setup() {
+  setup(options: { beforeWrite?: () => void; installationId?: string } = {}) {
     return this.lock(() => {
-      const p = this.plan(),
+      options.beforeWrite?.();
+      const p = this.plan(options.installationId),
         r = p.receipt;
       if (p.action === 'SKIP') return this.status();
       if (r.phase === 'removing')
@@ -365,7 +402,7 @@ export class GeminiSetup {
       return this.status();
     });
   }
-  uninstall(apply = false) {
+  uninstall(apply = false, beforeWrite?: () => void) {
     const r = this.state();
     if (!r || r.phase === 'removed') return { action: 'SKIP', installed: false };
     this.check(r);
@@ -376,6 +413,7 @@ export class GeminiSetup {
         router_action: r.router.owned ? 'REMOVE_MANAGED' : 'PRESERVE_REUSED',
       };
     return this.lock(() => {
+      beforeWrite?.();
       const current = this.state();
       if (!current) throw new AgentMindError('GEMINI_SETUP_CONFLICT', 'Receipt disappeared.');
       this.check(current);

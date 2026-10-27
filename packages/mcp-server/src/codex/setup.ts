@@ -109,7 +109,7 @@ export class CodexSetup {
       r.node !== this.node ||
       r.server_name !== this.serverName ||
       r.enrollment !== this.file(ENROLLMENT) ||
-      r.router !== this.router ||
+      (r.router !== this.router && r.phase !== 'uninstalled') ||
       !['installing', 'installed', 'removing', 'uninstalled'].includes(r.phase) ||
       !Array.isArray(r.changes) ||
       r.changes.length !== 3
@@ -137,7 +137,7 @@ export class CodexSetup {
       !enrollment ||
       config.after !== (config.before ?? '') + configBlock(r) ||
       router.before !== null ||
-      router.after !== this.router ||
+      router.after !== r.router ||
       enrollment.before !== null
     )
       throw new AgentMindError(
@@ -181,7 +181,15 @@ export class CodexSetup {
     }
     return r;
   }
-  plan() {
+  plan(installationId?: string) {
+    if (
+      installationId !== undefined &&
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(installationId)
+    )
+      throw new AgentMindError(
+        'CODEX_SETUP_INVALID',
+        'Installation identity must be a UUID; no caller path fragments are accepted.',
+      );
     const ignored = readBounded(this.root, this.file('.agentmind/codex/.gitignore'));
     if (ignored !== null && ignored !== '*\n')
       throw new AgentMindError(
@@ -231,7 +239,7 @@ export class CodexSetup {
         'CODEX_FILE_CONFLICT',
         'Existing router/enrollment is not owned by this setup.',
       );
-    const id = randomUUID();
+    const id = installationId ?? randomUUID();
     const r: Installation = {
       schema_version: 1,
       installation_id: id,
@@ -334,9 +342,10 @@ export class CodexSetup {
       if (acquired) unlinkSync(path);
     }
   }
-  setup() {
+  setup(options: { beforeWrite?: () => void; installationId?: string } = {}) {
     return this.locked(() => {
-      const p = this.plan();
+      options.beforeWrite?.();
+      const p = this.plan(options.installationId);
       if (p.action === 'SKIP') return { action: 'SKIP' };
       const backup = this.file(`.agentmind/codex/backups/${p.record.installation_id}.json`);
       if (!existsSync(backup)) {
@@ -355,8 +364,9 @@ export class CodexSetup {
       return { action: p.action, project_id: projectScope(this.root).id };
     });
   }
-  uninstall(apply = false) {
+  uninstall(apply = false, beforeWrite?: () => void) {
     const run = () => {
+      if (apply) beforeWrite?.();
       const r = this.state();
       if (!r || r.phase === 'uninstalled') return { action: 'SKIP' };
       let changes: Change[];

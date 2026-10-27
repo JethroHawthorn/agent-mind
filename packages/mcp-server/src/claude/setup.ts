@@ -146,7 +146,7 @@ export class ClaudeSetup {
       r.database !== this.database ||
       !/^[a-f0-9-]{36}$/.test(r.installation_id) ||
       !['installing', 'installed', 'removing', 'removed'].includes(r.phase) ||
-      r.router !== this.options.router ||
+      (r.router !== this.options.router && r.phase !== 'removed') ||
       JSON.stringify(r.entry) !== JSON.stringify(this.expectedEntry()) ||
       !(r.config_before === null || typeof r.config_before === 'string')
     )
@@ -176,7 +176,15 @@ export class ClaudeSetup {
   private entryMatches(value: unknown, r: Receipt) {
     return JSON.stringify(value) === JSON.stringify(r.entry);
   }
-  plan() {
+  plan(installationId?: string) {
+    if (
+      installationId !== undefined &&
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(installationId)
+    )
+      throw new AgentMindError(
+        'CLAUDE_SETUP_INVALID',
+        'Installation identity must be a UUID; no caller path fragments are accepted.',
+      );
     capabilities(this.claude);
     const state = this.state();
     if (state && state.phase !== 'removed') {
@@ -195,7 +203,7 @@ export class ClaudeSetup {
         'CLAUDE_SETUP_CONFLICT',
         'Existing AgentMind registration/router/enrollment is user-owned or registered in another scope. Inspect it with Claude; no duplicate or adoption was created.',
       );
-    const id = randomUUID();
+    const id = installationId ?? randomUUID();
     const stateNew: Receipt = {
       schema: 1,
       installation_id: id,
@@ -317,9 +325,10 @@ export class ClaudeSetup {
         );
     }
   }
-  setup() {
+  setup(options: { beforeWrite?: () => void; installationId?: string } = {}) {
     return this.lock(() => {
-      const p = this.plan(),
+      options.beforeWrite?.();
+      const p = this.plan(options.installationId),
         r = p.state;
       if (r.phase === 'removing')
         throw new AgentMindError('CLAUDE_SETUP_RECOVERY', 'Finish uninstall before setup.');
@@ -361,13 +370,14 @@ export class ClaudeSetup {
       return this.status();
     });
   }
-  uninstall(apply = false) {
+  uninstall(apply = false, beforeWrite?: () => void) {
     const r = this.state();
     if (!r || r.phase === 'removed') return { action: 'SKIP', installed: false };
     this.check(r);
     if (!apply)
       return { action: 'REMOVE', dry_run: true, server_name: this.serverName, scope: this.scope };
     return this.lock(() => {
+      beforeWrite?.();
       const fresh = this.state();
       if (!fresh) throw new AgentMindError('CLAUDE_SETUP_CONFLICT', 'Receipt disappeared.');
       this.check(fresh);
@@ -390,6 +400,13 @@ export class ClaudeSetup {
         backups_retained: true,
       };
     });
+  }
+  /** Explicit apply/diagnostic only: official CLI inspection can start the registered MCP. */
+  verifyUserRegistration() {
+    if (this.scope !== 'user') return true;
+    const r = this.state(),
+      value = this.userEntry();
+    return !!r && value !== null && this.matchesUser(value, r);
   }
   status() {
     const r = this.state();
