@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { fstatSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { isatty } from 'node:tty';
+import type Database from 'better-sqlite3';
 import { AgentMindError } from './errors.js';
 import { localOperatorIdentity } from './local-operator.js';
 
@@ -102,7 +103,7 @@ export function issueBrokerGrant(
 }
 
 /** Runtime capability check, independent of CLI parsing; no caller-supplied approver fields. */
-export function consumeOperatorGrant(grant: unknown, digest: string) {
+export function consumeOperatorGrant(grant: unknown, digest: string, registry?: Database.Database) {
   const authorization = grant && typeof grant === 'object' ? grants.get(grant) : undefined;
   if (!authorization)
     throw new AgentMindError(
@@ -127,6 +128,17 @@ export function consumeOperatorGrant(grant: unknown, digest: string) {
       : authorization.operator !== localOperatorIdentity()
   )
     throw new AgentMindError('OPERATOR_AUTHORIZATION_REQUIRED', 'Local operator identity changed.');
+  // Check the authoritative connection at consumption, including after preview.
+  // Ordinary openers already refuse protected files; direct service callers must
+  // not turn a local PTY confirmation into broker authority either.
+  if (
+    registry?.prepare("SELECT 1 FROM sqlite_master WHERE name='broker_deployment'").get() &&
+    !authorization.broker_peer
+  )
+    throw new AgentMindError(
+      'PROTECTED_OPERATOR_REQUIRED',
+      'Protected registry mutations require broker-issued operator authority; local terminal confirmation is unavailable for this registry.',
+    );
   return authorization;
 }
 

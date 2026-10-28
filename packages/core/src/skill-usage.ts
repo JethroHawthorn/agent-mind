@@ -347,7 +347,7 @@ export class SkillUsageService {
     return this.db
       .transaction(() => {
         const preview = this.prepareOutcome(input);
-        const auth = consumeOperatorGrant(grant, reviewDigest(preview));
+        const auth = consumeOperatorGrant(grant, reviewDigest(preview), this.db);
         return this.#append(
           preview.input.report,
           this.source,
@@ -531,7 +531,7 @@ export class SkillUsageService {
     return this.db
       .transaction(() => {
         const p = this.prepareRetention(input);
-        const auth = consumeOperatorGrant(grant, reviewDigest(p));
+        const auth = consumeOperatorGrant(grant, reviewDigest(p), this.db);
         for (const id of p.event_ids)
           this.db
             .prepare('DELETE FROM skill_usage_events WHERE project_id=? AND event_id=?')

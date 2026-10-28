@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@agentmind/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.27.1"
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "better-sqlite3": "^12.0.0"
   }
 }

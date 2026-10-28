@@ -71,7 +71,7 @@ export class SkillOperatorService {
     return this.db
       .transaction(() => {
         const preview = this.prepare(input);
-        const authorization = consumeOperatorGrant(grant, reviewDigest(preview));
+        const authorization = consumeOperatorGrant(grant, reviewDigest(preview), this.db);
         const { action, reason, review: r } = preview;
         if (
           (action === 'promote' || action === 'rollback') &&

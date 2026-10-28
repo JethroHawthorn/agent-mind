@@ -400,7 +400,7 @@ export class SkillDistributionService {
     const prepared = this.db
       .transaction(() => {
         const plan = this.plan(input);
-        const authorized = consumeOperatorGrant(grant, reviewDigest(plan));
+        const authorized = consumeOperatorGrant(grant, reviewDigest(plan), this.db);
         if (plan.entries.some((e) => e.action === 'CONFLICT'))
           throw new AgentMindError(
             'DISTRIBUTION_CONFLICT',

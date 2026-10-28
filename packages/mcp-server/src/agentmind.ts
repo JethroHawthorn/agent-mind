@@ -10,6 +10,7 @@ import {
   classifySqliteError,
   inspectProtectedDeployment,
   inspectRegistry,
+  releaseBoundaryStatus,
 } from '@agentmind/core';
 import { DAILY_DOMAINS, dailyHelp, runDailyCLI } from './daily/cli.js';
 import { databaseHelp, runDatabaseCLI } from './database.js';
@@ -161,6 +162,7 @@ async function main() {
       protected_deployment: 'NOT_VERIFIED',
       behavioral_sandbox: 'NOT_VERIFIED',
       behavioral_capabilities: behavioralSandboxStatus(),
+      release_boundaries: releaseBoundaryStatus(),
     };
     process.exitCode = checks.some((c) => c.status === 'FAIL')
       ? EXIT.verification

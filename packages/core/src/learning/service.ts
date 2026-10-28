@@ -246,7 +246,7 @@ export class LearningSignalService {
   confirmCorrection(input: unknown, grant: unknown) {
     return this.write(() => {
       const preview = this.prepareCorrection(input);
-      const auth = consumeOperatorGrant(grant, reviewDigest(preview));
+      const auth = consumeOperatorGrant(grant, reviewDigest(preview), this.db);
       const s = preview.signal;
       s.operator_correction = {
         operator: auth.operator,
