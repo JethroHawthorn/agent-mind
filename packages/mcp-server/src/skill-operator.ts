@@ -73,7 +73,7 @@ async function main() {
   for (const key of ['project-root', 'project-key', 'db'])
     if (typeof values[key] === 'string') args.push(`--${key}`, values[key] as string);
   const config = readConfig(args);
-  const db = openDatabase(config.dbPath);
+  const db = openDatabase(config.dbPath, { supervisedOnly: true });
   try {
     const read = new SkillReviewService(db, config.project);
     let result: unknown;

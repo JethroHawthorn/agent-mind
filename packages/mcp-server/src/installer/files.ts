@@ -1,6 +1,6 @@
 import { lstatSync, realpathSync } from 'node:fs';
 import { dirname, relative } from 'node:path';
-import { AgentMindError, redactSecrets, reviewText } from '@agentmind/core';
+import { AgentMindError, redactSensitiveValue, reviewText } from '@agentmind/core';
 import { digest, readBounded } from '../codex/files.js';
 import { rejectLinks } from '../codex/project.js';
 export type Watch = { root: string; path: string; opaque?: boolean };
@@ -62,14 +62,7 @@ export function validateSnapshot(
 }
 /** All values and keys are redacted. No raw configuration, environment or subprocess errors enter output. */
 export function privacy(value: unknown): unknown {
-  if (typeof value === 'string')
-    return redactSecrets(value).replace(/(?:sk|AIza)[-_A-Za-z0-9]{16,}/g, '[REDACTED]');
-  if (Array.isArray(value)) return value.map(privacy);
-  if (value && typeof value === 'object')
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [String(privacy(k)), privacy(v)]),
-    );
-  return value;
+  return redactSensitiveValue(value, true);
 }
 export const diagnosticText = (value: unknown, pretty = true) => reviewText(privacy(value), pretty);
 export function canonical(path: string) {

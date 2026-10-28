@@ -15,10 +15,10 @@ import {
   safeError,
   searchSchema,
 } from '@agentmind/core';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { readConfig } from './config.js';
 import { createServer } from './server.js';
 import { createShutdown } from './shutdown.js';
+import { createMcpTransport } from './transport.js';
 
 export async function startServer(
   config: ReturnType<typeof readConfig>,
@@ -27,7 +27,7 @@ export async function startServer(
 ): Promise<void> {
   // Restrict new SQLite/WAL/SHM files on POSIX; no permissions are widened.
   process.umask(0o077);
-  const db = openDatabase(config.dbPath);
+  const db = openDatabase(config.dbPath, { supervisedOnly: true });
   try {
     const memory = new MemoryService(db, config.project, config.sourceAgent);
     if (config.health) {
@@ -145,7 +145,7 @@ export async function startServer(
       console.error('[agentmind] UNHANDLED_REJECTION');
       void shutdown(1);
     });
-    await server.connect(new StdioServerTransport());
+    await server.connect(createMcpTransport());
     console.error('[agentmind] ready (stdio, project scoped)');
   } catch (error) {
     if (db.open) db.close();

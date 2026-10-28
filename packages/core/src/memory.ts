@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { SCHEMA_VERSION } from './database.js';
 import { AgentMindError } from './errors.js';
-import { assertSafeSummary } from './privacy.js';
+import { assertSafeSummary, redactSecrets } from './privacy.js';
 import type { ProjectScope } from './project.js';
 import { saveSchema, searchSchema } from './schemas.js';
 import type { SourceAgent } from './source-agent.js';
@@ -16,6 +16,7 @@ export type Memory = {
   kind: string;
   source_agent: string;
   status: 'unverified';
+  redacted?: true;
   created_at: string;
 };
 
@@ -73,13 +74,20 @@ export class MemoryService {
     const tokens = parsed.data.query.match(/[\p{L}\p{N}_]+/gu) ?? [];
     if (!tokens.length) return [];
     const query = tokens.map((token) => `"${token}"`).join(' AND ');
-    return this.db
+    const rows = this.db
       .prepare(`SELECT m.* FROM memories_fts
       JOIN memories m ON m.rowid = memories_fts.rowid
       WHERE memories_fts MATCH ? AND m.project_id = ?
       ORDER BY bm25(memories_fts), m.created_at DESC, m.id
       LIMIT ?`)
       .all(query, this.#project.id, parsed.data.limit) as Memory[];
+    return rows.map((row) => {
+      const title = redactSecrets(row.title),
+        content = redactSecrets(row.content);
+      return title === row.title && content === row.content
+        ? row
+        : { ...row, title, content, redacted: true as const };
+    });
   }
 
   health(): { ok: true; schema_version: number; project_id: string } {

@@ -632,3 +632,5 @@ Schema 11 adds scoped chronological indexes and a migration checksum ledger;
 older binaries must stop before upgrading. Local maintenance refuses protected broker
 registries and never replaces a live database or grants lifecycle approval.
 See [SQLite operations and recovery](docs/DATABASE_OPERATIONS.md).
+
+See [Security policy](SECURITY.md) for supervised/protected boundaries, private reporting and the [privacy operations guide](docs/PRIVACY_SECURITY.md).

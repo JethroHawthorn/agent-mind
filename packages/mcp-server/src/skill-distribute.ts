@@ -59,7 +59,9 @@ async function main() {
     if (typeof values[key] === 'string') args.push(`--${key}`, values[key] as string);
   const config = readConfig(args);
   const db =
-    mutation || values.verify ? openDatabase(config.dbPath) : openDatabaseReadOnly(config.dbPath);
+    mutation || values.verify
+      ? openDatabase(config.dbPath, { supervisedOnly: true })
+      : openDatabaseReadOnly(config.dbPath);
   try {
     const service = new SkillDistributionService(
       db,

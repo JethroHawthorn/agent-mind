@@ -1,22 +1,9 @@
 import { AgentMindError } from '../errors.js';
-import { redactSecrets } from '../privacy.js';
+import { redactSecrets, redactSensitiveValue } from '../privacy.js';
 import { contentPage } from '../retrieval/projection.js';
 /** Redaction happens before paging/preview. Records and evidence are never interpreted as instructions. */
 export function dailySafe(v: unknown): unknown {
-  if (typeof v === 'string') return redactSecrets(v);
-  if (Array.isArray(v)) return v.map(dailySafe);
-  if (v && typeof v === 'object')
-    return Object.fromEntries(
-      Object.entries(v).map(([k, x]) => [
-        redactSecrets(k),
-        /^(?:password|passwd|api[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|authorization|client[_-]?secret|cookie)$/i.test(
-          k,
-        )
-          ? '[REDACTED]'
-          : dailySafe(x),
-      ]),
-    );
-  return v;
+  return redactSensitiveValue(v, true);
 }
 export function preview(s: string, max = 160) {
   const clean = redactSecrets(s);

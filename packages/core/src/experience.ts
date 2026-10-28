@@ -10,6 +10,7 @@ import {
   experienceReviewSchema,
   experienceSearchSchema,
 } from './experience-schemas.js';
+import { redactSensitiveValue } from './privacy.js';
 import type { ProjectScope } from './project.js';
 import type { SourceAgent } from './source-agent.js';
 import { agentWrite } from './write-transaction.js';
@@ -75,6 +76,10 @@ function decode(row: ExperienceRow): Experience {
   };
 }
 function preview(experience: Experience) {
+  const original = experience;
+  experience = redactSensitiveValue(experience) as Experience;
+  const viewRedacted = JSON.stringify(original) !== JSON.stringify(experience);
+
   const clip = (value: string, max: number) =>
     value.length > max ? `${value.slice(0, max - 1)}…` : value;
   return {
@@ -95,7 +100,7 @@ function preview(experience: Experience) {
     verification_status: experience.verification_status,
     created_at: experience.created_at,
     updated_at: experience.updated_at,
-    redacted: experience.redacted,
+    redacted: experience.redacted || viewRedacted,
     content_truncated:
       experience.problem.length > 240 ||
       experience.solution.length > 480 ||

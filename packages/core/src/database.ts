@@ -141,12 +141,44 @@ function validateDatabaseFiles(path: string) {
     }
   }
 }
-export function openDatabase(path: string): Database.Database {
+/** Entry-point guard only: the marker is not a signature and cannot defend against
+ * arbitrary code with the broker's own OS authority. The generic low-level opener
+ * remains available to the trusted broker and tests, never as an MCP parameter.
+ */
+export function assertSupervisedRegistry(db: Database.Database): void {
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE name='broker_deployment'").get())
+    throw new AgentMindError(
+      'PROTECTED_LOCAL_ACCESS_DENIED',
+      'Use the protected broker interface; ordinary local writers cannot open a protected registry.',
+    );
+}
+function supervisedPreflight(path: string) {
+  if (path === ':memory:') return;
+  try {
+    lstatSync(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw error;
+  }
+  validateDatabaseFiles(path);
+  const read = new Database(path, { readonly: true, fileMustExist: true, timeout: 1000 });
+  try {
+    assertSupervisedRegistry(read);
+  } finally {
+    read.close();
+  }
+}
+export function openDatabase(
+  path: string,
+  options: { supervisedOnly?: boolean } = {},
+): Database.Database {
   let db: Database.Database | undefined;
   try {
+    if (options.supervisedOnly) supervisedPreflight(path);
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     validateDatabaseFiles(path);
     db = new Database(path, { timeout: 5000 });
+    if (options.supervisedOnly) assertSupervisedRegistry(db);
     if ((db.pragma('user_version', { simple: true }) as number) > SCHEMA_VERSION)
       throw new AgentMindError(
         'SCHEMA_TOO_NEW',
@@ -221,6 +253,7 @@ export function openUsageDatabase(path: string): Database.Database {
   validateDatabaseFiles(path);
   const db = new Database(path, { fileMustExist: true, timeout: 150 });
   try {
+    assertSupervisedRegistry(db);
     db.pragma('foreign_keys=ON');
     db.pragma('synchronous=FULL');
     if ((db.pragma('user_version', { simple: true }) as number) > SCHEMA_VERSION)

@@ -57,7 +57,7 @@ function main() {
   for (const key of ['project-root', 'project-key', 'db'] as const)
     if (values[key] !== undefined) args.push(`--${key}`, values[key]);
   const config = readConfig(args);
-  const db = openDatabase(config.dbPath);
+  const db = openDatabase(config.dbPath, { supervisedOnly: true });
   try {
     const service = new SkillEvaluationService(db, config.project);
     const result = values['report-id']

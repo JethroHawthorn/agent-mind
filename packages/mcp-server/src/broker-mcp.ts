@@ -44,7 +44,7 @@ import {
   usageSummarySchema,
 } from '@agentmind/core';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { createMcpTransport } from './transport.js';
 
 async function main() {
   const { values } = parseArgs({
@@ -143,7 +143,7 @@ async function main() {
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
-  await server.connect(new StdioServerTransport());
+  await server.connect(createMcpTransport());
 }
 main().catch(() => {
   console.error('[agentmind] BROKER_MCP_STARTUP_DENIED');

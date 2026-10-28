@@ -45,7 +45,7 @@ function main(): void {
     throw new AgentMindError('INVALID_CONFIG', 'Inspect and review are separate local actions.');
   }
   const config = readConfig(args);
-  const db = openDatabase(config.dbPath);
+  const db = openDatabase(config.dbPath, { supervisedOnly: true });
   try {
     const service = new ExperienceService(db, config.project);
     const result = values.inspect

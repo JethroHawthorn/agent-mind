@@ -86,7 +86,9 @@ async function main() {
       args.push(`--${k}`, ...(typeof v[k] === 'string' ? [v[k] as string] : []));
   const config = readConfig(args);
   const db =
-    v.query || v.summary ? openDatabaseReadOnly(config.dbPath) : openDatabase(config.dbPath);
+    v.query || v.summary
+      ? openDatabaseReadOnly(config.dbPath)
+      : openDatabase(config.dbPath, { supervisedOnly: true });
   try {
     const service = new SkillUsageService(
       db,
