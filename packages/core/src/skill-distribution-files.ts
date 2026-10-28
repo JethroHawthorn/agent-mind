@@ -12,7 +12,7 @@ import {
   mkdirSync,
   openSync,
   readdirSync,
-  readFileSync,
+  readSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -25,7 +25,7 @@ import {
   type InstallationRecord,
   installationManifestSchema,
 } from './skill-distribution-model.js';
-import { hashSkillFiles } from './skill-model.js';
+import { hashSkillFiles, skillFilesSchema } from './skill-model.js';
 
 export const INSTALLATION_MANIFEST = '.agentmind-install.json';
 export const digestText = (text: string) => createHash('sha256').update(text).digest('hex');
@@ -66,6 +66,16 @@ export function inspectPath(base: string, path: string) {
   }
   return result;
 }
+/** Namespace durability barrier. Fails closed if this filesystem cannot synchronize directories. */
+export function syncDirectory(path: string) {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_DIRECTORY);
+  try {
+    if (!fstatSync(fd).isDirectory()) throw new Error('not directory');
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
 export type PublicationPermissions = Readonly<{ gid: number }>;
 export function createSafeDirectories(
   base: string,
@@ -80,6 +90,7 @@ export function createSafeDirectories(
     inspectPath(base, dirname(cursor));
     if (!pathExists(cursor)) {
       mkdirSync(cursor, { mode: 0o700 });
+      syncDirectory(dirname(cursor));
       if (permissions) {
         chownSync(cursor, -1, permissions.gid);
         chmodSync(cursor, 0o750);
@@ -89,11 +100,20 @@ export function createSafeDirectories(
   }
 }
 function readOrdinaryFile(path: string, max: number): string {
-  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
     const stat = fstatSync(fd);
     if (!stat.isFile() || stat.nlink !== 1 || stat.size > max) throw new Error('unsupported file');
-    const bytes = readFileSync(fd);
+    const buffer = Buffer.alloc(max + 1);
+    let length = 0;
+    for (;;) {
+      const count = readSync(fd, buffer, length, buffer.length - length, length);
+      length += count;
+      if (length > max) throw new Error('file grew beyond bound');
+      if (count === 0) break;
+    }
+    if (fstatSync(fd).size !== stat.size || length !== stat.size) throw new Error('file changed');
+    const bytes = buffer.subarray(0, length);
     const text = bytes.toString('utf8');
     if (!Buffer.from(text, 'utf8').equals(bytes)) throw new Error('invalid utf8');
     return text;
@@ -170,6 +190,8 @@ export function matchesRecord(
     observed.identity === record.root_identity &&
     observed.manifest_hash === record.manifest_hash &&
     observed.content_digest === record.installed_digest &&
+    observed.manifest.installed_digest === record.installed_digest &&
+    observed.manifest.registry_digest === record.installed_digest &&
     observed.manifest.installation_id === record.id &&
     observed.manifest.destination === record.destination &&
     observed.manifest.version_id === record.version_id &&
@@ -186,6 +208,13 @@ export function materializePackage(
   manifest: InstallationManifest,
   permissions?: PublicationPermissions,
 ) {
+  files = skillFilesSchema.parse(files);
+  manifest = installationManifestSchema.parse(manifest);
+  if (
+    hashSkillFiles(files) !== manifest.registry_digest ||
+    manifest.installed_digest !== manifest.registry_digest
+  )
+    throw new AgentMindError('STAGING_INTEGRITY_ERROR', 'Package and manifest digest mismatch.');
   inspectPath(base, dirname(path));
   mkdirSync(path, { mode: 0o700 });
   if (permissions) {
@@ -226,6 +255,16 @@ export function materializePackage(
   } finally {
     closeSync(fd);
   }
+  // File data was fsynced above; flush child namespaces before making the root visible.
+  const syncTree = (folder: string) => {
+    for (const name of readdirSync(folder)) {
+      const child = join(folder, name);
+      if (lstatSync(child).isDirectory()) syncTree(child);
+    }
+    syncDirectory(folder);
+  };
+  syncTree(path);
+  syncDirectory(dirname(path));
   const staged = inspectPackage(path);
   if (
     staged.status !== 'present' ||
@@ -244,6 +283,8 @@ export function moveChecked(base: string, from: string, to: string) {
   if (pathExists(to))
     throw new AgentMindError('DISTRIBUTION_CONFLICT', 'Move destination already exists.');
   renameSync(from, to);
+  syncDirectory(dirname(to));
+  if (dirname(from) !== dirname(to)) syncDirectory(dirname(from));
   inspectPath(base, dirname(from));
   inspectPath(base, dirname(to));
 }
@@ -255,4 +296,5 @@ export function deleteCheckedPackage(base: string, path: string, record: Install
       'Refusing cleanup of changed or unproven content.',
     );
   rmSync(path, { recursive: true, force: false });
+  syncDirectory(dirname(path));
 }

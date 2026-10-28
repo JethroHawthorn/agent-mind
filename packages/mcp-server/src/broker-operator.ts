@@ -32,6 +32,8 @@ async function main() {
         ...operatorQueryOperations,
         'broker_health',
         'distribution_plan',
+        'distribution_history',
+        'distribution_rollback_plan',
         'distribution_verify',
       ].some((op) => op === values.read)
     ) {

@@ -3,6 +3,10 @@ import { lstatSync } from 'node:fs';
 import { join } from 'node:path';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
+import {
+  distributionCheckpoint,
+  migrateDistributionReliability,
+} from './distribution-reliability.js';
 import { AgentMindError } from './errors.js';
 import { localOperatorIdentity } from './local-operator.js';
 import { consumeOperatorGrant, reviewDigest } from './operator-confirmation.js';
@@ -34,13 +38,19 @@ import {
   distributionDestination,
   trustedDistributionHome,
 } from './skill-distribution-targets.js';
+import { SkillOperatorService } from './skill-operator.js';
 import { diffSkillFiles, type SkillReviewService } from './skill-review.js';
 import { SkillStore } from './skill-store.js';
 import { nextTimestamp } from './timestamp.js';
 
 const WARNING =
   'Distribution changes CLI-discoverable files. Same-user PTY/SQLite/filesystem access defeats adversarial authorization and ownership proofs. Static PASS is not behavioral verification. User scope exposes this project skill to other local projects. SQLite and filesystem changes are not one atomic transaction.';
-type Auth = { operator: string; session: string; digest: string };
+type Auth = {
+  operator: string;
+  session: string;
+  digest: string;
+  broker_peer?: { uid: number; gid: number };
+};
 
 export class SkillDistributionService {
   readonly #scope: ProjectScope;
@@ -306,6 +316,86 @@ export class SkillDistributionService {
       .immediate();
     return { ...plan, verified_at: now };
   }
+  rollbackPlan(input: unknown, validateApproval?: (versionId: string) => void) {
+    const parsed = z.strictObject({ skill_id: z.uuid() }).safeParse(input);
+    if (!parsed.success)
+      throw new AgentMindError('INVALID_INPUT', 'Expected an exact scoped skill UUID.');
+    return this.db.transaction(() => {
+      const identity = new SkillStore(this.db, this.#scope).getIdentity(parsed.data.skill_id);
+      const rows = this.db
+        .prepare(
+          'SELECT to_version_id FROM skill_promotions WHERE project_id=? AND skill_id=? AND to_version_id IS NOT NULL AND to_version_id != ? GROUP BY to_version_id ORDER BY MAX(created_at) DESC,to_version_id DESC LIMIT 51',
+        )
+        .all(this.#scope.id, identity.id, identity.active_version_id ?? '') as {
+        to_version_id: string;
+      }[];
+      const targets = rows.slice(0, 50).map((r) => {
+        const v = new SkillStore(this.db, this.#scope).getVersion(r.to_version_id);
+        let eligibility = 'ELIGIBLE';
+        try {
+          new SkillOperatorService(this.db, this.#scope).prepare({
+            action: 'rollback',
+            version_id: v.version.id,
+          });
+          validateApproval?.(v.version.id);
+        } catch (e) {
+          eligibility = e instanceof AgentMindError ? e.code : 'NOT_VERIFIED';
+        }
+        return { version_id: v.version.id, digest: v.version.content_hash, eligibility };
+      });
+      return {
+        schema_version: 1,
+        skill_id: identity.id,
+        active_version_id: identity.active_version_id,
+        targets,
+        truncated: rows.length > 50,
+        mutation_authorized: false,
+        protected_deployment: 'NOT_VERIFIED',
+      };
+    })();
+  }
+  history(input: unknown) {
+    const parsed = z
+      .strictObject({
+        skill_id: z.uuid(),
+        limit: z.number().int().min(1).max(50).default(20),
+        offset: z.number().int().min(0).max(10000).default(0),
+      })
+      .safeParse(input);
+    if (!parsed.success)
+      throw new AgentMindError(
+        'INVALID_INPUT',
+        'Expected a skill UUID and bounded integer pagination.',
+      );
+    const p = parsed.data;
+    return this.db.transaction(() => {
+      new SkillStore(this.db, this.#scope).getIdentity(p.skill_id);
+      const intents = this.db
+        .prepare(
+          'SELECT id,target,scope,status,stage_identity,created_at FROM skill_distribution_intents WHERE project_id=? AND skill_id=? ORDER BY created_at DESC,id LIMIT ? OFFSET ?',
+        )
+        .all(this.#scope.id, p.skill_id, p.limit + 1, p.offset);
+      const events = this.db
+        .prepare(
+          'SELECT id,intent_id,target,action,outcome,version_id,installed_digest,operator_id,authorization_method,context_digest,created_at FROM skill_distribution_events WHERE project_id=? AND skill_id=? ORDER BY created_at DESC,id LIMIT ? OFFSET ?',
+        )
+        .all(this.#scope.id, p.skill_id, p.limit + 1, p.offset);
+      return {
+        schema_version: 1,
+        project_id: this.#scope.id,
+        skill_id: p.skill_id,
+        intents: intents.slice(0, p.limit),
+        events: events.slice(0, p.limit),
+        next_offset:
+          (intents.length > p.limit || events.length > p.limit) && p.offset + p.limit <= 10000
+            ? p.offset + p.limit
+            : null,
+        truncated: intents.length > p.limit || events.length > p.limit,
+        protected_deployment: 'NOT_VERIFIED',
+        untrusted_data: true,
+      };
+    })();
+  }
   commit(input: unknown, grant: unknown) {
     const prepared = this.db
       .transaction(() => {
@@ -316,6 +406,8 @@ export class SkillDistributionService {
             'DISTRIBUTION_CONFLICT',
             'Plan contains a conflict; no installation files were changed.',
           );
+        distributionCheckpoint('before_journal', '');
+        migrateDistributionReliability(this.db);
         const operations = plan.entries.map((entry) => {
           if (entry.action === 'SKIP') return { entry, intent: null };
           if (entry.pending) {
@@ -381,12 +473,25 @@ export class SkillDistributionService {
               `INSERT INTO skill_distribution_intents (id,project_id,skill_id,target,scope,destination,action,manifest_json,manifest_hash,old_record_json,worker_id,stage_identity,status,operator_id,session_id,context_digest,created_at) VALUES (@id,@project_id,@skill_id,@target,@scope,@destination,@action,@manifest_json,@manifest_hash,@old_record_json,@worker_id,@stage_identity,@status,@operator_id,@session_id,@context_digest,@created_at)`,
             )
             .run(intent);
+          this.event(
+            entry,
+            id,
+            'PLANNED',
+            'INTENT_DURABLE',
+            entry.version_id,
+            entry.content_digest,
+            authorized,
+          );
           return { entry, intent };
         });
         return { plan, operations, authorized };
       })
       .immediate();
     const authorized = prepared.authorized;
+    distributionCheckpoint(
+      'after_journal',
+      prepared.operations.find((o) => o.intent)?.intent?.id ?? '',
+    );
     const results = [];
     for (const { entry, intent } of prepared.operations) {
       if (!intent) {
@@ -434,7 +539,12 @@ export class SkillDistributionService {
         );
       }
     }
-    return { results, warning: WARNING, untrusted_data: true as const };
+    return {
+      results,
+      outcome: prepared.operations.some((o) => o.entry.pending) ? 'REPLAN_REQUIRED' : 'COMPLETE',
+      warning: WARNING,
+      untrusted_data: true as const,
+    };
   }
   private paths(entry: DistributionPlanEntry, intent: DistributionIntent) {
     z.uuid().parse(intent.id);
@@ -448,7 +558,9 @@ export class SkillDistributionService {
     if (
       intent.destination !== target.destination ||
       intent.project_id !== this.#scope.id ||
-      intent.skill_id !== entry.skill_id
+      intent.skill_id !== entry.skill_id ||
+      intent.target !== entry.target ||
+      intent.scope !== entry.scope
     )
       throw new Error('foreign intent');
     const work = join(target.base, '.agentmind', 'distribution-v1');
@@ -457,6 +569,8 @@ export class SkillDistributionService {
       work,
       stage: join(work, `${intent.id}.stage`),
       backup: join(work, `${intent.id}.backup`),
+      quarantine: join(work, `${intent.id}.corrupt`),
+      withdrawn: join(work, `${intent.id}.withdrawn`),
     };
   }
   private newRecord(intent: DistributionIntent): InstallationRecord | null {
@@ -468,7 +582,14 @@ export class SkillDistributionService {
       m.project_id !== this.#scope.id ||
       m.skill_id !== intent.skill_id ||
       m.target !== intent.target ||
-      m.scope !== intent.scope
+      m.scope !== intent.scope ||
+      m.registry_digest !== m.installed_digest ||
+      m.registry_id !==
+        (
+          this.db.prepare('SELECT id FROM skill_registry_identity WHERE singleton=1').get() as {
+            id: string;
+          }
+        ).id
     )
       throw new Error('invalid intent');
     const old = intent.old_record_json
@@ -499,8 +620,9 @@ export class SkillDistributionService {
     auth: Auth,
     registryDigest: string,
   ) {
+    distributionCheckpoint('before_staging', intent.id);
     const paths = this.paths(entry, intent);
-    createSafeDirectories(paths.base, paths.work, this.publicationPermissions);
+    createSafeDirectories(paths.base, paths.work);
     createSafeDirectories(paths.base, paths.parent, this.publicationPermissions);
     const newRecord = this.newRecord(intent);
     if (newRecord) {
@@ -514,6 +636,7 @@ export class SkillDistributionService {
         installationManifestSchema.parse(JSON.parse(intent.manifest_json ?? '')),
         this.publicationPermissions,
       );
+      distributionCheckpoint('after_staging', intent.id);
       intent.stage_identity = staged.identity;
       const saved = this.db
         .prepare(
@@ -523,7 +646,8 @@ export class SkillDistributionService {
       if (saved.changes !== 1) throw new Error('operation ownership changed');
       newRecord.root_identity = staged.identity;
     }
-    return this.db
+    distributionCheckpoint('stage_recorded', intent.id);
+    const published = this.db
       .transaction(() => {
         this.assertWorker(intent);
         const fresh = this.registry(request);
@@ -543,14 +667,27 @@ export class SkillDistributionService {
         if (pathExists(paths.destination)) {
           if (!entry.record || !matchesRecord(inspectPackage(paths.destination), entry.record))
             throw new Error('local substitution');
+          if (newRecord && !matchesRecord(inspectPackage(paths.stage), newRecord))
+            throw new Error('stage integrity before backup');
+          distributionCheckpoint('before_backup_rename', intent.id);
           moveChecked(paths.base, paths.destination, paths.backup);
+          distributionCheckpoint('after_backup_rename', intent.id);
           if (!matchesRecord(inspectPackage(paths.backup), entry.record))
             throw new Error('backup changed');
         }
         if (newRecord) {
+          distributionCheckpoint('before_publish_rename', intent.id);
+          if (!matchesRecord(inspectPackage(paths.stage), newRecord))
+            throw new Error('stage integrity before publication');
           moveChecked(paths.base, paths.stage, paths.destination);
-          if (!matchesRecord(inspectPackage(paths.destination), newRecord))
-            throw new Error('published integrity');
+          try {
+            distributionCheckpoint('after_publish_rename', intent.id);
+            if (!matchesRecord(inspectPackage(paths.destination), newRecord))
+              throw new Error('published integrity');
+          } catch (error) {
+            this.quarantine(entry, intent);
+            throw error;
+          }
           this.store(newRecord);
         } else if (entry.record)
           this.db
@@ -558,27 +695,12 @@ export class SkillDistributionService {
               "UPDATE skill_installations SET status='removed',updated_at=? WHERE id=? AND project_id=?",
             )
             .run(nextTimestamp(entry.record.updated_at), entry.record.id, this.#scope.id);
-        const retained = this.cleanup(entry, intent);
-        if (retained)
-          this.event(
-            entry,
-            intent.id,
-            'CLEANUP',
-            'UNPROVEN_PRIVATE_WORK_RETAINED',
-            entry.version_id,
-            entry.content_digest,
-            auth,
-          );
-        this.db
-          .prepare(
-            "UPDATE skill_distribution_intents SET status='completed' WHERE id=? AND status='pending'",
-          )
-          .run(intent.id);
+        distributionCheckpoint('before_registry_commit', intent.id);
         this.event(
           entry,
           intent.id,
           entry.action,
-          'COMPLETED',
+          'PUBLICATION_COMMITTED',
           newRecord?.version_id ?? entry.record?.version_id ?? null,
           newRecord?.installed_digest ?? entry.record?.installed_digest ?? null,
           auth,
@@ -587,10 +709,23 @@ export class SkillDistributionService {
           target: entry.target,
           status: entry.action,
           intent_id: intent.id,
-          retained_work: retained,
+          retained_work: true,
         };
       })
       .immediate();
+    distributionCheckpoint('after_registry_commit', intent.id);
+    const retained = this.db
+      .transaction(() => {
+        this.assertWorker(intent);
+        if (
+          newRecord &&
+          this.registry(request).artifact?.review.version.id !== newRecord.version_id
+        )
+          throw new Error('publication became stale');
+        return this.finishRecovery(entry, intent, auth, 'COMPLETED', newRecord, entry.action);
+      })
+      .immediate();
+    return { ...published, retained_work: retained };
   }
   private recover(
     request: DistributionRequest,
@@ -612,24 +747,161 @@ export class SkillDistributionService {
     )
       throw new Error('foreign old record');
     const next = this.newRecord(intent);
-    return this.db
+    const decision = this.db
+      .prepare(
+        'SELECT outcome,record_json FROM distribution_recovery_decisions WHERE intent_id=? AND project_id=?',
+      )
+      .get(intent.id, this.#scope.id) as
+      | { outcome: string; record_json: string | null }
+      | undefined;
+    if (decision) {
+      const record = decision.record_json
+        ? (JSON.parse(decision.record_json) as InstallationRecord)
+        : null;
+      if (
+        ![
+          'ABORTED_UNPUBLISHED',
+          'ABORTED_STALE_PUBLICATION',
+          'RECOVERED_PUBLISHED',
+          'RECOVERED_INSTALL',
+          'RECOVERED_REMOVAL',
+        ].includes(decision.outcome) ||
+        (record && ![old, next].some((r) => r && reviewDigest(r) === reviewDigest(record)))
+      )
+        throw new Error('invalid recovery decision binding');
+      let resolution = this.db
+        .prepare(
+          'SELECT outcome FROM distribution_recovery_resolutions WHERE intent_id=? AND project_id=?',
+        )
+        .get(intent.id, this.#scope.id) as { outcome: string } | undefined;
+      let finalized: boolean | undefined;
+      if (!resolution) {
+        resolution = this.db
+          .transaction(() => {
+            this.assertWorker(intent);
+            this.quarantine(entry, intent);
+            const current = inspectPackage(paths.destination),
+              fresh = this.registry(request);
+            const matches = record && matchesRecord(current, record);
+            const eligible =
+              matches &&
+              fresh.artifact?.review.version.id === record.version_id &&
+              fresh.artifact.review.version.content_hash === record.installed_digest;
+            const intendedRemoval = decision.outcome === 'RECOVERED_REMOVAL';
+            const success = record && !decision.outcome.startsWith('ABORTED') && !intendedRemoval;
+            // Unchanged valid success, or unchanged retained old copy after abort, can finalize.
+            if (
+              (eligible && !intendedRemoval) ||
+              (current.status === 'missing' && !success && (!record || intendedRemoval))
+            ) {
+              // Keep the last eligibility check and normal finalization under one writer lock.
+              finalized = this.finishRecovery(entry, intent, auth, decision.outcome, record);
+              return undefined;
+            }
+            if (current.status !== 'missing') {
+              if (!matches) throw new Error('unowned changed recovery destination');
+              moveChecked(paths.base, paths.destination, paths.withdrawn);
+            }
+            const outcome =
+              current.status === 'missing'
+                ? pathExists(paths.quarantine)
+                  ? 'ABORTED_CORRUPT_PUBLICATION'
+                  : 'ABORTED_UNPUBLISHED'
+                : 'ABORTED_STALE_PUBLICATION';
+            this.db
+              .prepare(
+                "UPDATE skill_installations SET status='removed',updated_at=? WHERE destination=? AND project_id=? AND skill_id=?",
+              )
+              .run(nextTimestamp(), entry.destination, this.#scope.id, entry.skill_id);
+            this.db
+              .prepare('INSERT INTO distribution_recovery_resolutions VALUES(?,?,?)')
+              .run(intent.id, this.#scope.id, outcome);
+            this.event(entry, intent.id, 'REPAIR', outcome, null, null, auth);
+            return { outcome };
+          })
+          .immediate();
+      }
+      if (finalized !== undefined)
+        return {
+          target: entry.target,
+          status: 'REPAIR',
+          intent_id: intent.id,
+          replan_required: true,
+          retained_work: finalized,
+        };
+      if (resolution) distributionCheckpoint('after_resolution_commit', intent.id);
+      const retained = this.db
+        .transaction(() => {
+          this.assertWorker(intent);
+          if (resolution && pathExists(paths.destination))
+            throw new Error('resolved abort destination replaced');
+          return this.finishRecovery(
+            entry,
+            intent,
+            auth,
+            resolution?.outcome ?? decision.outcome,
+            resolution ? null : record,
+          );
+        })
+        .immediate();
+      return {
+        target: entry.target,
+        status: 'REPAIR',
+        intent_id: intent.id,
+        replan_required: true,
+        retained_work: retained,
+      };
+    }
+    let outcome = '';
+    let record: InstallationRecord | null = null;
+    const recovered = this.db
       .transaction(() => {
-        let retainedWork = false;
+        const retainedWork = false;
         this.assertWorker(intent);
         if (fileIdentity(paths.base) !== this.#roots.get(paths.base))
           throw new Error('root changed');
         inspectPath(paths.base, paths.parent);
         inspectPath(paths.base, paths.work);
+        this.quarantine(entry, intent);
         const current = inspectPackage(paths.destination);
         const ownedNext = next && matchesRecord(current, next);
         const ownedOld = old && matchesRecord(current, old);
         if (current.status !== 'missing' && !ownedNext && !ownedOld)
           throw new Error('unowned recovery destination');
-        if (ownedNext) {
+        const fresh = this.registry(request);
+        const eligibleNext =
+          next &&
+          !fresh.error &&
+          fresh.artifact?.review.version.id === next.version_id &&
+          fresh.artifact.review.version.content_hash === next.installed_digest;
+        if (ownedNext && !eligibleNext) {
+          if (pathExists(paths.stage)) throw new Error('stale publication work collision');
+          moveChecked(paths.base, paths.destination, paths.stage);
+          this.db
+            .prepare(
+              "UPDATE skill_installations SET status='removed',updated_at=? WHERE destination=? AND project_id=?",
+            )
+            .run(nextTimestamp(), entry.destination, this.#scope.id);
+          outcome = 'ABORTED_STALE_PUBLICATION';
+          record = old;
+        } else if (ownedNext) {
           this.store(next);
-          retainedWork = this.finishRecovery(entry, intent, auth, 'RECOVERED_PUBLISHED', next);
+          outcome = 'RECOVERED_PUBLISHED';
+          record = next;
         } else if (ownedOld) {
-          retainedWork = this.finishRecovery(entry, intent, auth, 'ABORTED_UNPUBLISHED', old);
+          if (
+            fresh.artifact?.review.version.id !== old.version_id ||
+            fresh.artifact.review.version.content_hash !== old.installed_digest
+          ) {
+            moveChecked(paths.base, paths.destination, paths.backup);
+            this.db
+              .prepare(
+                "UPDATE skill_installations SET status='removed',updated_at=? WHERE destination=? AND project_id=?",
+              )
+              .run(nextTimestamp(), entry.destination, this.#scope.id);
+          }
+          outcome = 'ABORTED_UNPUBLISHED';
+          record = old;
         } else if (intent.action === 'REMOVE' || !next) {
           if (old)
             this.db
@@ -637,22 +909,24 @@ export class SkillDistributionService {
                 "UPDATE skill_installations SET status='removed',updated_at=? WHERE id=? AND project_id=?",
               )
               .run(nextTimestamp(old.updated_at), old.id, this.#scope.id);
-          retainedWork = this.finishRecovery(entry, intent, auth, 'RECOVERED_REMOVAL', old);
+          outcome = 'RECOVERED_REMOVAL';
+          record = old;
         } else {
-          const fresh = this.registry(request);
           if (
-            !fresh.error &&
+            eligibleNext &&
             request.operation === 'sync' &&
-            fresh.identity.active_version_id === next.version_id &&
             intent.stage_identity &&
             matchesRecord(inspectPackage(paths.stage), next)
           ) {
             createSafeDirectories(paths.base, paths.parent, this.publicationPermissions);
             moveChecked(paths.base, paths.stage, paths.destination);
-            if (!matchesRecord(inspectPackage(paths.destination), next))
+            if (!matchesRecord(inspectPackage(paths.destination), next)) {
+              this.quarantine(entry, intent);
               throw new Error('recovery integrity');
+            }
             this.store(next);
-            retainedWork = this.finishRecovery(entry, intent, auth, 'RECOVERED_INSTALL', next);
+            outcome = 'RECOVERED_INSTALL';
+            record = next;
           } else {
             if (old)
               this.db
@@ -660,9 +934,22 @@ export class SkillDistributionService {
                   "UPDATE skill_installations SET status='removed',updated_at=? WHERE id=? AND project_id=?",
                 )
                 .run(nextTimestamp(old.updated_at), old.id, this.#scope.id);
-            retainedWork = this.finishRecovery(entry, intent, auth, 'ABORTED_UNPUBLISHED', old);
+            outcome = 'ABORTED_UNPUBLISHED';
+            record = old;
           }
         }
+        this.db
+          .prepare('INSERT INTO distribution_recovery_decisions VALUES(?,?,?,?)')
+          .run(intent.id, this.#scope.id, outcome, record ? JSON.stringify(record) : null);
+        this.event(
+          entry,
+          intent.id,
+          'REPAIR',
+          'RECOVERY_STATE_COMMITTED',
+          record?.version_id ?? null,
+          record?.installed_digest ?? null,
+          auth,
+        );
         return {
           target: entry.target,
           status: 'REPAIR',
@@ -672,6 +959,32 @@ export class SkillDistributionService {
         };
       })
       .immediate();
+    distributionCheckpoint('after_recovery_commit', intent.id);
+    const retained = this.db
+      .transaction(() => {
+        this.assertWorker(intent);
+        return this.finishRecovery(entry, intent, auth, outcome, record);
+      })
+      .immediate();
+    return { ...recovered, retained_work: retained };
+  }
+  private quarantine(entry: DistributionPlanEntry, intent: DistributionIntent) {
+    const paths = this.paths(entry, intent),
+      next = this.newRecord(intent);
+    if (
+      next &&
+      intent.stage_identity &&
+      pathExists(paths.destination) &&
+      fileIdentity(paths.destination) === intent.stage_identity &&
+      !matchesRecord(inspectPackage(paths.destination), next)
+    ) {
+      if (
+        !lstatSync(paths.destination).isDirectory() ||
+        lstatSync(paths.destination).isSymbolicLink()
+      )
+        throw new Error('unsafe quarantine root');
+      moveChecked(paths.base, paths.destination, paths.quarantine);
+    }
   }
   private cleanup(entry: DistributionPlanEntry, intent: DistributionIntent) {
     const paths = this.paths(entry, intent);
@@ -679,9 +992,13 @@ export class SkillDistributionService {
       ? (JSON.parse(intent.old_record_json) as InstallationRecord)
       : null;
     const next = this.newRecord(intent);
-    let retained = false;
+    let retained = pathExists(paths.quarantine);
     for (const [path, record] of [
       [paths.backup, old],
+      [
+        paths.withdrawn,
+        [old, next].find((r) => r && matchesRecord(inspectPackage(paths.withdrawn), r)) ?? null,
+      ],
       [paths.stage, intent.stage_identity ? next : null],
     ] as const) {
       if (!pathExists(path)) continue;
@@ -709,8 +1026,11 @@ export class SkillDistributionService {
     auth: Auth,
     outcome: string,
     record: InstallationRecord | null,
+    eventAction: string = 'REPAIR',
   ) {
+    distributionCheckpoint('before_cleanup', intent.id);
     const retained = this.cleanup(entry, intent);
+    distributionCheckpoint('after_cleanup', intent.id);
     if (retained)
       this.event(
         entry,
@@ -727,7 +1047,7 @@ export class SkillDistributionService {
     this.event(
       entry,
       intent.id,
-      'REPAIR',
+      eventAction,
       outcome,
       record?.version_id ?? null,
       record?.installed_digest ?? null,
@@ -750,8 +1070,9 @@ export class SkillDistributionService {
     version: string | null,
     digest: string | null,
     auth: Auth,
-    method = 'local-tty-confirmation-v1',
+    method = auth.broker_peer ? 'kernel-peer-uid-v1' : 'local-tty-confirmation-v1',
   ) {
+    distributionCheckpoint('before_audit', intent ?? '');
     this.db
       .prepare(
         `INSERT INTO skill_distribution_events (id,project_id,skill_id,destination,target,scope,intent_id,action,outcome,version_id,installed_digest,operator_id,authorization_method,session_id,context_digest,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,

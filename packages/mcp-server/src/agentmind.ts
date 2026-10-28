@@ -11,6 +11,7 @@ import {
   inspectRegistry,
 } from '@agentmind/core';
 import { DAILY_DOMAINS, dailyHelp, runDailyCLI } from './daily/cli.js';
+import { distributionHelp, runDistributionCLI } from './distribution.js';
 import { evaluationHelp, runEvaluationCLI } from './evaluation.js';
 import { runtimeDoctor } from './installer/doctor.js';
 import { diagnosticText } from './installer/files.js';
@@ -43,6 +44,10 @@ Exit: 0 success, 2 warnings/incomplete, 3 conflict, 4 arguments, 5 dependency,
 `;
 async function main() {
   process.umask(0o077);
+  if (process.argv[2] === 'distribution') {
+    await runDistributionCLI(process.argv.slice(3));
+    return;
+  }
   if (process.argv[2] === 'evaluation') {
     runEvaluationCLI(process.argv.slice(3));
     return;
@@ -74,7 +79,7 @@ async function main() {
     },
   });
   if (v.help) {
-    process.stdout.write(`${help}\n${dailyHelp}\n${evaluationHelp}`);
+    process.stdout.write(`${help}\n${dailyHelp}\n${evaluationHelp}\n${distributionHelp}`);
     return;
   }
   const action = positionals[0],

@@ -26,6 +26,8 @@ it('materializes exact approved files as group-readable, agent-nonwritable copie
   if (gid === undefined) throw new Error('POSIX test required');
   const service = new SkillDistributionService(f.db, f.scope, f.home, { gid });
   service.commit(f.request, {});
+  expect(lstatSync(join(f.root, '.agentmind')).mode & 0o777).toBe(0o700);
+  expect(lstatSync(join(f.root, '.agentmind', 'distribution-v1')).mode & 0o777).toBe(0o700);
   for (const target of ['.agents', '.claude']) {
     const root = join(f.root, target, 'skills', f.candidate.identity.name);
     expect(lstatSync(root).mode & 0o777).toBe(0o750);

@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { SkillAuthoringService } from '../authoring/service.js';
 import { RecommendationService } from '../curator/service.js';
+import { AgentMindError } from '../errors.js';
 import { ExperienceService } from '../experience.js';
 import { experienceReviewSchema } from '../experience-schemas.js';
 import { LearningSignalService } from '../learning/service.js';
@@ -224,10 +225,28 @@ export class BrokerService {
             return '<denied>';
           }
         })();
-        this.audit(peer, auth, op, 'denied', {
+        const recovery =
+          error instanceof AgentMindError && error.code === 'DISTRIBUTION_RECOVERY_REQUIRED';
+        const partialInput =
+          parsed.success &&
+          parsed.data.input &&
+          typeof parsed.data.input === 'object' &&
+          'challenge_id' in parsed.data.input
+            ? parsed.data.input.challenge_id
+            : null;
+        const binding =
+          recovery && typeof partialInput === 'string'
+            ? (this.db
+                .prepare(
+                  "SELECT s.action,s.version_id,s.content_digest,s.evaluation_id,s.review_digest,s.request_id FROM broker_security_events s JOIN broker_audit a ON a.id=s.audit_id WHERE s.request_id=? AND a.uid=? AND a.project=? AND a.result='claimed' ORDER BY a.rowid DESC LIMIT 1",
+                )
+                .get(partialInput, peer.uid, auth) as Partial<SecurityAuditContext> | undefined)
+            : undefined;
+        this.audit(peer, auth, op, recovery ? 'partial_or_recovery_required' : 'denied', {
+          ...binding,
           channel,
           action: op,
-          failure_code: 'REQUEST_DENIED',
+          failure_code: recovery ? 'PARTIAL_OR_RECOVERY_REQUIRED' : 'REQUEST_DENIED',
         });
       } catch {}
       throw error;
@@ -485,9 +504,18 @@ export class BrokerService {
         })
         .immediate();
     }
-    if (p.op === 'distribution_plan' || p.op === 'distribution_verify') {
-      const request = distributionRequestSchema.parse(p.input);
-      if (request.scope !== 'project')
+    if (
+      [
+        'distribution_plan',
+        'distribution_verify',
+        'distribution_history',
+        'distribution_rollback_plan',
+      ].includes(p.op)
+    ) {
+      const request = ['distribution_history', 'distribution_rollback_plan'].includes(p.op)
+        ? null
+        : distributionRequestSchema.parse(p.input);
+      if (request && request.scope !== 'project')
         denied('Protected distribution supports configured project publication only.');
       const service = publicationService(
         this.db,
@@ -496,7 +524,10 @@ export class BrokerService {
         scope,
         this.nativeHelper,
       );
-      return p.op === 'distribution_plan' ? service.plan(request) : service.verify(request);
+      if (p.op === 'distribution_history') return service.history(p.input);
+      if (p.op === 'distribution_rollback_plan')
+        return service.rollbackPlan(p.input, (id) => this.protectedApproval(auth.project.name, id));
+      return service.plan(request); // Broker read operations never attribute a daemon-local observation as an operator write.
     }
     if (p.op === 'operator_prepare') {
       const operation = operationSchema.parse(p.input);
@@ -590,6 +621,13 @@ export class BrokerService {
       })
       .immediate();
     const operation = operationSchema.parse(JSON.parse(saved.input_json));
+    const executionContext = this.securityContext(
+      auth.project.name,
+      channel,
+      commit.challenge_id,
+      operation,
+      saved.digest,
+    );
     const apply = () => {
       const preview = this.preview(auth.project.name, operation);
       if (reviewDigest(preview) !== saved.digest)
@@ -611,19 +649,7 @@ export class BrokerService {
           scope,
           this.nativeHelper,
         ).commit(operation.request, grant);
-      this.audit(
-        peer,
-        auth.project.name,
-        operation.kind,
-        'applied',
-        this.securityContext(
-          auth.project.name,
-          channel,
-          commit.challenge_id,
-          operation,
-          saved.digest,
-        ),
-      );
+      this.audit(peer, auth.project.name, operation.kind, 'applied', executionContext);
       return result;
     };
     return operation.kind === 'distribution' ? apply() : this.db.transaction(apply).immediate();
@@ -706,6 +732,16 @@ export class BrokerService {
       action: operation.kind === 'skill' ? operation.request.action : operation.kind,
       review_digest: digest,
     };
+    if (operation.kind === 'distribution') {
+      const scope = required(this.scopes.get(project));
+      const id = new SkillStore(this.db, scope).getIdentity(operation.request.skill_id);
+      if (id.active_version_id) {
+        const r = new SkillStore(this.db, scope).getVersion(id.active_version_id);
+        context.version_id = r.version.id;
+        context.content_digest = r.version.content_hash;
+        context.evaluation_id = r.state.latest_evaluation_id ?? undefined;
+      }
+    }
     if (operation.kind === 'skill') {
       const scope = required(this.scopes.get(project));
       const r = new SkillStore(this.db, scope).getVersion(operation.request.version_id);

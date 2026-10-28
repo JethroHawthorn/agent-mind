@@ -9,6 +9,7 @@ import {
   safeError,
 } from '@agentmind/core';
 import { readConfig } from './config.js';
+import { diagnosticText } from './installer/files.js';
 
 async function main() {
   process.umask(0o077);
@@ -76,7 +77,7 @@ async function main() {
       : values.verify
         ? service.verify(input)
         : service.plan(input);
-    process.stdout.write(`${JSON.stringify(result)}\n`);
+    process.stdout.write(`${diagnosticText(result)}\n`);
   } finally {
     db.close();
   }

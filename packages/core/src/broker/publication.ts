@@ -42,7 +42,9 @@ export function checkPublication(
       s.isSymbolicLink() ||
       (!s.isDirectory() && !s.isFile()) ||
       s.uid !== config.broker_uid ||
-      s.gid !== p.gid ||
+      (!path.startsWith(join(p.root, '.agentmind')) && s.gid !== p.gid) ||
+      ([join(p.root, '.agentmind'), join(p.root, '.agentmind', 'distribution-v1')].includes(path) &&
+        (s.mode & 0o777) !== 0o700) ||
       s.mode & 0o7027 ||
       (s.isFile() && s.nlink !== 1)
     )
