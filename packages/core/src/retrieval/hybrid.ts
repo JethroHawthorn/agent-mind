@@ -23,6 +23,28 @@ const words = (s: string) =>
       .toLowerCase()
       .match(/[\p{L}\p{N}]+/gu) ?? [],
   );
+// Object nouns alone do not identify a reusable task. Keep them searchable, but
+// require another signal before showing a card for a multiword task description.
+const genericObjects = new Set([
+  'data',
+  'record',
+  'records',
+  'field',
+  'fields',
+  'task',
+  'tasks',
+  'workflow',
+  'workflows',
+  'procedure',
+  'procedures',
+  'content',
+  'file',
+  'files',
+  'input',
+  'inputs',
+  'output',
+  'outputs',
+]);
 const hintName = (s: string) => {
   const n = s
     .trim()
@@ -180,9 +202,23 @@ export class HybridSkillRouter {
             )
             .get(match, this.#scope.id, a.active_version_id, a.name, a.description);
         }
-        if (!matched.length && !expanded.length && !hints.length && !stemmed) continue;
         const alias = f.aliases.some((x) => norm(x) === norm(p.context.summary));
         const exact = a.name === n.summary.normalized;
+        const declaredPhrase = [...f.aliases, ...f.triggers].some((text) => {
+          const phrase = norm(text);
+          return phrase && ` ${task} `.includes(` ${phrase} `);
+        });
+        if (!matched.length && !expanded.length && !hints.length && !stemmed) continue;
+        if (
+          n.summary.terms.length > 1 &&
+          !exact &&
+          !declaredPhrase &&
+          !expanded.length &&
+          !hints.length &&
+          !stemmed &&
+          !matched.some((term) => !genericObjects.has(term))
+        )
+          continue;
         ranked.push({ a, f, matched, expanded, hints, stemmed, alias, exact });
       }
       ranked.sort(

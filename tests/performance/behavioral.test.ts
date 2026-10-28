@@ -1,8 +1,8 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { expect, it } from 'vitest';
 import { SkillEvaluationService } from '../../packages/core/src/index.js';
 import { distributionFixture } from '../helpers/distribution-fixture.js';
+import { writeReviewArtifact } from '../helpers/review-artifact.js';
 
 it('measures refusal planning and evidence persistence without claiming sandbox execution costs', () => {
   const f = distributionFixture();
@@ -63,8 +63,7 @@ it('measures refusal planning and evidence persistence without claiming sandbox 
       cleanup: null,
       peak_guest_memory: null,
     };
-    mkdirSync('docs/reviews', { recursive: true });
-    writeFileSync('docs/reviews/P5-002_PERFORMANCE.json', `${JSON.stringify(report, null, 2)}\n`);
+    writeReviewArtifact('P5-002_PERFORMANCE.json', report);
     expect(size).toBeLessThan(32768);
   } finally {
     f.close();

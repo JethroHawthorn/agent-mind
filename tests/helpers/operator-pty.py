@@ -28,7 +28,9 @@ try:
             if not part:
                 break
             output += part
-            match = re.search(rb"(?:^|\n)(CONFIRM [a-f0-9]{64} [a-f0-9]{32})\r?\n> ", output)
+            # ONLCR may add a CR to a program's existing CRLF. The challenge
+            # remains exact; only the test terminal's newline is normalized.
+            match = re.search(rb"(?:^|\n)(CONFIRM [a-f0-9]{64} [a-f0-9]{32})\r*\n> ", output)
             if match and not announced:
                 announced = True
                 print(json.dumps({"event": "ready", "output": output.decode("utf8", "replace")}), flush=True)

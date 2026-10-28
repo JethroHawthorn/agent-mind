@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { sanitizeExperienceText } from '../experience-privacy.js';
 import { assertSafeSummary } from '../privacy.js';
 export const DISCOVERY_FEATURE_POLICY = 'discovery-features-v1';
-export const HYBRID_POLICY = 'hybrid-selection-cards-v1';
+export const HYBRID_POLICY = 'hybrid-selection-cards-v2-substantive-overlap';
 const phrases = z.array(z.string().trim().min(1).max(100)).max(4);
 const featureSchema = z.strictObject({
   aliases: phrases.default([]),

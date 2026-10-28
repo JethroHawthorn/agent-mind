@@ -34,16 +34,41 @@ it('reuses the existing route with opt-in cards and bounded alias retrieval', ()
 it('preserves negative applicability and rejects explicitly incompatible frameworks', () => {
   const f = fixture();
   seedHybridQuality(f);
-  expect(
-    f.retrieval
-      .selectionCards(card('tabular extraction unapproved records'))
-      .skills.map((s) => s.name),
-  ).not.toContain('data-export');
+  expect(f.retrieval.selectionCards(card('tabular extraction unapproved records'))).toMatchObject({
+    outcome: 'NO_MATCH',
+    skills: [],
+  });
   const r = f.retrieval.selectionCards({
     context: { summary: 'route payload checks', frameworks: ['express'] },
   });
   expect(r.skills.map((s) => s.name)).toContain('express-requests');
   expect(r.skills.map((s) => s.name)).not.toContain('nextjs-requests');
+});
+it.each(['satellite telemetry records', 'botanical inventory fields'])(
+  'generic object words cannot route an unrelated task: %s',
+  (summary) => {
+    const f = fixture();
+    seedHybridQuality(f);
+    for (const expand of [false, true]) {
+      const result = f.retrieval.selectionCards({ context: { summary }, expand });
+      expect(result.outcome).toBe('NO_MATCH');
+      expect(result.skills).toEqual([]);
+    }
+  },
+);
+it('preserves declared alias phrases and exact names even when their words are generic', () => {
+  const f = fixture();
+  f.add({
+    name: 'records',
+    description: 'Inspect scoped structured data.',
+    metadata: { 'discovery.aliases': JSON.stringify(['task records']) },
+  });
+  expect(f.retrieval.selectionCards(card('records')).skills.map((s) => s.name)).toEqual([
+    'records',
+  ]);
+  expect(
+    f.retrieval.selectionCards(card('archive task records')).skills.map((s) => s.name),
+  ).toEqual(['records']);
 });
 it.each([
   { project_id: 'forged' },

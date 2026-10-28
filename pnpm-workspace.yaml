@@ -1,6 +1,9 @@
 packages:
   - packages/*
 
+# Inspection/test commands must not trigger pnpm 11's implicit dependency install.
+verifyDepsBeforeRun: false
+
 allowBuilds:
   better-sqlite3: true
   esbuild: true
