@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync } from 'node:fs';
+import { chmodSync, lstatSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import Database from 'better-sqlite3';
 import { AgentMindError } from './errors.js';
@@ -10,10 +10,11 @@ import { migrateSkills } from './skill-migration.js';
 import { migrateSkillOperator } from './skill-operator-migration.js';
 import { migrateSkillDiscovery } from './skill-search-migration.js';
 import { migrateSkillUsage } from './skill-usage-migration.js';
+import { migrateStorageReliability, verifyCoreSchema } from './storage-reliability-migration.js';
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
-export function migrate(db: Database.Database): void {
+export function migrate(db: Database.Database, preflight?: () => void): void {
   if (db.inTransaction)
     throw new AgentMindError(
       'MIGRATION_TRANSACTION',
@@ -25,13 +26,22 @@ export function migrate(db: Database.Database): void {
   db.pragma('foreign_keys = OFF');
   try {
     db.transaction(() => {
+      preflight?.();
       const version = db.pragma('user_version', { simple: true }) as number;
-      if (version > SCHEMA_VERSION) {
+      if (version < 0 || version > SCHEMA_VERSION) {
         throw new AgentMindError(
           'SCHEMA_TOO_NEW',
           'Database schema is newer than this AgentMind version.',
         );
       }
+      if (
+        version === 0 &&
+        db.prepare("SELECT 1 FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' LIMIT 1").get()
+      )
+        throw new AgentMindError(
+          'SCHEMA_UNKNOWN',
+          'Unversioned nonempty database requires explicit legacy inspection; no reset was performed.',
+        );
       if (version === 0) {
         db.exec(`
         CREATE TABLE projects (id TEXT PRIMARY KEY, canonical_path TEXT NOT NULL UNIQUE);
@@ -82,6 +92,8 @@ export function migrate(db: Database.Database): void {
       if (version < 8) migrateSkillDistribution(db);
       if (version < 9) migrateSkillUsage(db);
       if (version < 10) migrateGeminiSources(db);
+      if (version < 11) migrateStorageReliability(db);
+      verifyCoreSchema(db);
       const violations = db.pragma('foreign_key_check') as unknown[];
       if (violations.length) {
         throw new AgentMindError(
@@ -111,11 +123,35 @@ function enableWal(db: Database.Database): void {
   }
 }
 
+/** Leaf/sidecar protection is defense in depth, not an OS tenant boundary or a
+ * race-proof openat implementation. Protected deployments still require private parents.
+ */
+function validateDatabaseFiles(path: string) {
+  if (path === ':memory:') return;
+  for (const target of [path, `${path}-wal`, `${path}-shm`, `${path}-journal`]) {
+    try {
+      const stat = lstatSync(target);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1)
+        throw new AgentMindError(
+          'DATABASE_PATH',
+          'Database and sidecars must be regular files without symbolic or hard links.',
+        );
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+}
 export function openDatabase(path: string): Database.Database {
   let db: Database.Database | undefined;
   try {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+    validateDatabaseFiles(path);
     db = new Database(path, { timeout: 5000 });
+    if ((db.pragma('user_version', { simple: true }) as number) > SCHEMA_VERSION)
+      throw new AgentMindError(
+        'SCHEMA_TOO_NEW',
+        'Database schema is newer than this AgentMind version.',
+      );
     if (path !== ':memory:' && process.platform !== 'win32') {
       try {
         chmodSync(path, 0o600);
@@ -131,6 +167,7 @@ export function openDatabase(path: string): Database.Database {
     enableWal(db);
     db.pragma('synchronous = FULL');
     migrate(db);
+    verifyCoreSchema(db);
     // Also verifies FTS5 on already-migrated databases.
     db.prepare('SELECT rowid FROM memories_fts LIMIT 0').all();
     db.prepare('SELECT rowid FROM experiences_fts LIMIT 0').all();
@@ -153,14 +190,21 @@ export function openDatabase(path: string): Database.Database {
 export function openDatabaseReadOnly(path: string): Database.Database {
   let db: Database.Database | undefined;
   try {
+    validateDatabaseFiles(path);
     db = new Database(path, { readonly: true, fileMustExist: true, timeout: 5000 });
     db.pragma('query_only = ON');
     db.pragma('foreign_keys = ON');
+    if ((db.pragma('user_version', { simple: true }) as number) > SCHEMA_VERSION)
+      throw new AgentMindError(
+        'SCHEMA_TOO_NEW',
+        'Database schema is newer than this AgentMind version.',
+      );
     if (db.pragma('user_version', { simple: true }) !== SCHEMA_VERSION)
       throw new AgentMindError(
         'MIGRATION_REQUIRED',
         'Initialize or migrate this registry with the trusted server health command before read-only planning.',
       );
+    verifyCoreSchema(db);
     return db;
   } catch (error) {
     db?.close();
@@ -174,14 +218,22 @@ export function openDatabaseReadOnly(path: string): Database.Database {
 
 /** Hooks never initialize/migrate a registry or wait on its normal five-second busy timeout. */
 export function openUsageDatabase(path: string): Database.Database {
+  validateDatabaseFiles(path);
   const db = new Database(path, { fileMustExist: true, timeout: 150 });
   try {
     db.pragma('foreign_keys=ON');
+    db.pragma('synchronous=FULL');
+    if ((db.pragma('user_version', { simple: true }) as number) > SCHEMA_VERSION)
+      throw new AgentMindError(
+        'SCHEMA_TOO_NEW',
+        'Database schema is newer than this AgentMind version.',
+      );
     if (db.pragma('user_version', { simple: true }) !== SCHEMA_VERSION)
       throw new AgentMindError(
         'MIGRATION_REQUIRED',
         'Initialize telemetry using the normal health workflow first.',
       );
+    verifyCoreSchema(db);
     return db;
   } catch (e) {
     db.close();

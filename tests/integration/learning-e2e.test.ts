@@ -486,7 +486,7 @@ it('E2E-08: migration interruption rolls back DDL and preserves existing scoped 
   });
   await f.close(client);
   f.db.exec(
-    'DROP TABLE skill_usage_cleanup;DROP TABLE skill_usage_events;DROP TABLE skill_usage_dedup;PRAGMA user_version=8',
+    'DROP TABLE IF EXISTS schema_migrations; DROP INDEX IF EXISTS memories_scope_recent; DROP INDEX IF EXISTS experiences_scope_recent; DROP TABLE skill_usage_cleanup;DROP TABLE skill_usage_events;DROP TABLE skill_usage_dedup;PRAGMA user_version=8',
   );
   // Existing table name collision is a safe migration failure, not an approval or policy bypass.
   f.db.exec('CREATE TABLE skill_usage_events (collision TEXT)');
@@ -500,7 +500,7 @@ it('E2E-08: migration interruption rolls back DDL and preserves existing scoped 
   ).toBeUndefined();
   f.db.exec('DROP TABLE skill_usage_events');
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(10);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
   expect(f.db.pragma('foreign_key_check')).toEqual([]);
 });
 

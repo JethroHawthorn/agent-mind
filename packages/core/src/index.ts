@@ -32,6 +32,7 @@ export * from './daily/model.js';
 export { dailySafe } from './daily/projection.js';
 export * from './daily/service.js';
 export * from './database.js';
+export * from './database-maintenance.js';
 export * from './errors.js';
 export * from './experience.js';
 export * from './experience-schemas.js';

@@ -1,5 +1,7 @@
+import { realpathSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import { SCHEMA_VERSION } from './database.js';
+import { inspectDatabase } from './database-maintenance.js';
 import type { ProjectScope } from './project.js';
 import { SkillRetrievalService } from './retrieval/service.js';
 /** Read-only, bounded, project-scoped diagnostics; no schema creation, repairs or content output. */
@@ -47,6 +49,7 @@ export function inspectRegistry(path: string, scope: ProjectScope) {
           ? 'BOUNDED_SAMPLE_ONLY'
           : 'READ_ONLY_CHECKS_COMPLETE',
       schema: version,
+      storage: inspectDatabase(realpathSync(path)),
       checked: valid + invalid,
       invalid,
       incomplete: ids.length > 100,

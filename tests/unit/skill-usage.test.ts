@@ -432,7 +432,7 @@ it('migrates v8 without changing immutable skills and rolls back a failed v9 mig
   const f = fixture();
   const before = f.store.getVersion(f.candidate.version.id);
   f.db.exec(
-    'DROP TABLE skill_usage_cleanup;DROP TABLE skill_usage_events;DROP TABLE skill_usage_dedup;PRAGMA user_version=8',
+    'DROP TABLE IF EXISTS schema_migrations; DROP INDEX IF EXISTS memories_scope_recent; DROP INDEX IF EXISTS experiences_scope_recent; DROP TABLE skill_usage_cleanup;DROP TABLE skill_usage_events;DROP TABLE skill_usage_dedup;PRAGMA user_version=8',
   );
   const original = f.db.exec.bind(f.db);
   const spy = vi.spyOn(f.db, 'exec').mockImplementation((sql) => {
@@ -449,7 +449,7 @@ it('migrates v8 without changing immutable skills and rolls back a failed v9 mig
     f.db.prepare("SELECT name FROM sqlite_master WHERE name='failed_usage_fixture'").get(),
   ).toBeUndefined();
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(10);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
   expect(f.store.getVersion(f.candidate.version.id)).toEqual(before);
   expect(f.db.pragma('foreign_key_check')).toEqual([]);
 });

@@ -623,3 +623,12 @@ See [Claude setup, daily use, native verification and recovery](docs/CLAUDE_DAIL
 `pnpm gemini --help` exposes project/user setup, status, doctor and uninstall. Preview with `pnpm gemini setup --scope project --project-root /absolute/project --db /absolute/shared/agentmind.db --dry-run --json`; writes require explicit `--apply`. The alias is `agentmind`, existing compatible routers are reused read-only, policy restrictions are preserved, and GEMINI.md/hooks/authentication are not edited.
 
 Core schema v10 adds Gemini provenance; take a verified SQLite-consistent backup and stop/restart clients before actual upgrade. Gemini CLI is currently absent, so native authentication, activation and application are NOT VERIFIED. See [Gemini daily setup and recovery](docs/GEMINI_DAILY_WORKFLOW.md) and [actual P4-003 evidence/acceptance](docs/reviews/P4-003_IMPLEMENTATION.md).
+
+## Database reliability and recovery
+
+Use `pnpm agentmind db --help` for read-only status/doctor, migration planning,
+explicit FTS rebuild, WAL-aware backup verification and restore to a new offline file.
+Schema 11 adds scoped chronological indexes and a migration checksum ledger;
+older binaries must stop before upgrading. Local maintenance refuses protected broker
+registries and never replaces a live database or grants lifecycle approval.
+See [SQLite operations and recovery](docs/DATABASE_OPERATIONS.md).

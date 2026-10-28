@@ -236,7 +236,9 @@ describe('real stdio MCP processes', () => {
       const failed = spawnSync(process.execPath, [entry, ...args], { cwd: b, encoding: 'utf8' });
       expect(failed.status).toBe(1);
       expect(failed.stdout).toBe('');
-      expect(failed.stderr).toMatch(/INVALID_CONFIG|PROJECT_SCOPE_DENIED|DATABASE_UNAVAILABLE/);
+      expect(failed.stderr).toMatch(
+        /INVALID_CONFIG|PROJECT_SCOPE_DENIED|DATABASE_UNAVAILABLE|DATABASE_PATH/,
+      );
     }
   });
   it.each(['SIGINT', 'SIGTERM', 'EOF'] as const)('closes gracefully on %s', async (signal) => {

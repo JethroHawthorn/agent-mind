@@ -86,7 +86,7 @@ it('upgrades actual populated v9, preserving approved version bytes, active poin
     .all();
   migrate(db);
   migrate(db);
-  expect(db.pragma('user_version', { simple: true })).toBe(10);
+  expect(db.pragma('user_version', { simple: true })).toBe(11);
   expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
   expect(db.pragma('foreign_key_check')).toEqual([]);
   expect(new SkillStore(db, f.scope).getVersion(approved.version.id)).toEqual(before);
@@ -136,4 +136,28 @@ it('unexpected legacy source schema rolls back DDL/data/trigger removal and rest
   expect(db.pragma('user_version', { simple: true })).toBe(9);
   expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
   expect(db.prepare('SELECT type,name,sql FROM sqlite_master ORDER BY name').all()).toEqual(before);
+});
+it('upgrades actual populated v10 through the checksummed v11 index migration', async () => {
+  const { db, approved } = legacy();
+  const { migrateGeminiSources } = await import(
+    '../../packages/core/src/gemini-source-migration.js'
+  );
+  db.pragma('foreign_keys=OFF');
+  try {
+    db.transaction(() => migrateGeminiSources(db)).immediate();
+  } finally {
+    db.pragma('foreign_keys=ON');
+  }
+  expect(db.pragma('user_version', { simple: true })).toBe(10);
+  const before = db.prepare('SELECT * FROM skill_versions WHERE id=?').get(approved.version.id);
+  const records = db.prepare('SELECT * FROM skill_operator_events ORDER BY id').all();
+  migrate(db);
+  expect(db.pragma('user_version', { simple: true })).toBe(11);
+  expect(db.prepare('SELECT * FROM skill_versions WHERE id=?').get(approved.version.id)).toEqual(
+    before,
+  );
+  expect(db.prepare('SELECT * FROM skill_operator_events ORDER BY id').all()).toEqual(records);
+  expect(
+    db.prepare('SELECT version,length(checksum) AS size FROM schema_migrations').all(),
+  ).toEqual([{ version: 11, size: 64 }]);
 });

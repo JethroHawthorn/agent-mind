@@ -7,10 +7,12 @@ import { parseArgs } from 'node:util';
 import {
   AgentMindError,
   behavioralSandboxStatus,
+  classifySqliteError,
   inspectProtectedDeployment,
   inspectRegistry,
 } from '@agentmind/core';
 import { DAILY_DOMAINS, dailyHelp, runDailyCLI } from './daily/cli.js';
+import { databaseHelp, runDatabaseCLI } from './database.js';
 import { distributionHelp, runDistributionCLI } from './distribution.js';
 import { evaluationHelp, runEvaluationCLI } from './evaluation.js';
 import { runtimeDoctor } from './installer/doctor.js';
@@ -44,6 +46,10 @@ Exit: 0 success, 2 warnings/incomplete, 3 conflict, 4 arguments, 5 dependency,
 `;
 async function main() {
   process.umask(0o077);
+  if (process.argv[2] === 'db') {
+    await runDatabaseCLI(process.argv.slice(3));
+    return;
+  }
   if (process.argv[2] === 'distribution') {
     await runDistributionCLI(process.argv.slice(3));
     return;
@@ -79,7 +85,9 @@ async function main() {
     },
   });
   if (v.help) {
-    process.stdout.write(`${help}\n${dailyHelp}\n${evaluationHelp}\n${distributionHelp}`);
+    process.stdout.write(
+      `${help}\n${dailyHelp}\n${evaluationHelp}\n${distributionHelp}\n${databaseHelp}`,
+    );
     return;
   }
   const action = positionals[0],
@@ -228,7 +236,9 @@ main().catch((e) => {
         ? 'INSTALLER_PERMISSION'
         : /^(?:ERR_PARSE_ARGS)/.test((e as NodeJS.ErrnoException).code ?? '')
           ? ((e as NodeJS.ErrnoException).code ?? 'INSTALLER_ARGUMENTS')
-          : 'INSTALLER_INTERNAL';
+          : process.argv[2] === 'db'
+            ? classifySqliteError(e)
+            : 'INSTALLER_INTERNAL';
   const exit =
     code === 'INVALID_INPUT' ||
     code === 'INSTALLER_ARGUMENTS' ||
@@ -237,27 +247,36 @@ main().catch((e) => {
     code === 'REVIEW_INVALID_INPUT' ||
     code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' ||
     code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE' ||
-    /PROJECT_INVALID|PATH_INVALID|ROUTER_INVALID/.test(code) ||
+    /PROJECT_INVALID|PATH_INVALID|ROUTER_INVALID|DATABASE_PATH|RESTORE_PATH|BACKUP_PATH/.test(
+      code,
+    ) ||
     e instanceof TypeError
       ? EXIT.invalid
       : /PERMISSION|EACCES|EPERM/.test(code)
         ? EXIT.permission
-        : /DEPENDENCY/.test(code)
-          ? EXIT.dependency
-          : /CONFLICT|STALE|NOT_FOUND|UNAVAILABLE|PLAN|BUSY|CONCURRENT|PARTIAL|SCOPE/.test(code)
-            ? EXIT.conflict
-            : EXIT.internal;
+        : process.argv[2] === 'db' &&
+            /CHECKSUM|DATABASE_UNHEALTHY|BACKUP_METADATA|BACKUP_SIDECAR|PACKAGE_INTEGRITY|MIGRATION_INTEGRITY/.test(
+              code,
+            )
+          ? EXIT.verification
+          : /DEPENDENCY/.test(code)
+            ? EXIT.dependency
+            : /CONFLICT|STALE|NOT_FOUND|UNAVAILABLE|PLAN|BUSY|CONCURRENT|PARTIAL|SCOPE/.test(code)
+              ? EXIT.conflict
+              : EXIT.internal;
   const json = process.argv.includes('--json');
   const out = {
     schema_version: 1,
     error: {
       code,
       message:
-        process.argv[2] === 'evaluation'
-          ? 'Evaluation unavailable or invalid. Refresh the exact candidate plan and inspect evaluation doctor; no candidate code, approval or promotion was executed.'
-          : DAILY_DOMAINS.includes(process.argv[2] ?? '')
-            ? 'Daily view/action unavailable or invalid. Use a full scoped ID, refresh a stale review snapshot, or inspect the existing registry with status/doctor. No approval or promotion was performed.'
-            : 'Integration operation could not complete safely. Use --help or doctor; existing data/configuration was not force-overwritten.',
+        process.argv[2] === 'db'
+          ? 'Database maintenance refused or failed safely. Inspect db --help and db doctor; protected state and live restore are unavailable. No raw database content or driver message is displayed.'
+          : process.argv[2] === 'evaluation'
+            ? 'Evaluation unavailable or invalid. Refresh the exact candidate plan and inspect evaluation doctor; no candidate code, approval or promotion was executed.'
+            : DAILY_DOMAINS.includes(process.argv[2] ?? '')
+              ? 'Daily view/action unavailable or invalid. Use a full scoped ID, refresh a stale review snapshot, or inspect the existing registry with status/doctor. No approval or promotion was performed.'
+              : 'Integration operation could not complete safely. Use --help or doctor; existing data/configuration was not force-overwritten.',
     },
   };
   (json ? process.stdout : process.stderr).write(`${diagnosticText(out)}\n`);

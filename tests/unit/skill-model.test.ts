@@ -362,7 +362,7 @@ describe('P2-001 migration and restart', () => {
     const reviews = f.db.prepare('SELECT * FROM experience_reviews').all();
     migrate(f.db);
     migrate(f.db);
-    expect(f.db.pragma('user_version', { simple: true })).toBe(10);
+    expect(f.db.pragma('user_version', { simple: true })).toBe(11);
     expect(f.db.prepare('SELECT * FROM experiences').all()).toEqual(experiences);
     expect(f.db.prepare('SELECT * FROM experience_reviews').all()).toEqual(reviews);
     expect(new MemoryService(f.db, f.scope).search({ query: 'SQLite' })).toEqual([memory]);

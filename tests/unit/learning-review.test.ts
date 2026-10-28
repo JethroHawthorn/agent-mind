@@ -324,7 +324,7 @@ it('retains append-only audit and rolls back failed metadata writes', () => {
     'INSERT OR REPLACE INTO learning_review_events SELECT * FROM learning_review_events',
   ])
     expect(() => f.db.exec(sql)).toThrow(/immutable/);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(10);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
 });
 it('rollback of migration errors preserves core and authoring data', () => {
   const f = fixture();

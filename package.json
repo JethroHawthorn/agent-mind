@@ -16,7 +16,7 @@
     "verify:cli": "node scripts/verify-cli.mjs",
     "verify:experience-cli": "node scripts/verify-cli.mjs --experiences",
     "verify:skills-cli": "node scripts/verify-skills.mjs",
-    "test:e2e": "pnpm build && vitest run tests/integration/learning-e2e.test.ts tests/unit/skills-evidence.test.ts tests/integration/continuous-learning.test.ts tests/unit/continuous-learning.test.ts tests/integration/retrieval.test.ts tests/unit/routing.test.ts tests/unit/routing-quality.test.ts tests/unit/codex-setup.test.ts tests/integration/codex-daily.test.ts tests/integration/claude-daily.test.ts tests/unit/claude-setup.test.ts tests/unit/gemini-setup.test.ts tests/integration/gemini-daily.test.ts tests/unit/gemini-migration.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/integration/daily-workflow.test.ts tests/unit/knowledge-migration.test.ts tests/integration/behavioral.test.ts tests/integration/sandbox-evaluation.test.ts tests/integration/skill-distribution.test.ts tests/integration/distribution-reliability.test.ts tests/unit/distribution-reliability.test.ts",
+    "test:e2e": "pnpm build && vitest run tests/integration/learning-e2e.test.ts tests/unit/skills-evidence.test.ts tests/integration/continuous-learning.test.ts tests/unit/continuous-learning.test.ts tests/integration/retrieval.test.ts tests/unit/routing.test.ts tests/unit/routing-quality.test.ts tests/unit/codex-setup.test.ts tests/integration/codex-daily.test.ts tests/integration/claude-daily.test.ts tests/unit/claude-setup.test.ts tests/unit/gemini-setup.test.ts tests/integration/gemini-daily.test.ts tests/unit/gemini-migration.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/integration/daily-workflow.test.ts tests/unit/knowledge-migration.test.ts tests/integration/behavioral.test.ts tests/integration/sandbox-evaluation.test.ts tests/integration/skill-distribution.test.ts tests/integration/distribution-reliability.test.ts tests/unit/distribution-reliability.test.ts tests/integration/database-reliability.test.ts tests/integration/database-cli.test.ts",
     "skill:install": "node scripts/install-reflect.mjs",
     "lint": "biome check --error-on-warnings .",
     "format:check": "biome format .",
@@ -44,7 +44,9 @@
     "verify:behavioral-isolation": "node scripts/verify-behavioral-isolation.mjs",
     "benchmark:behavioral": "pnpm build && vitest run tests/performance/behavioral.test.ts --maxWorkers=1 --no-file-parallelism",
     "test:distribution": "pnpm build && vitest run tests/unit/skill-distribution.test.ts tests/integration/skill-distribution.test.ts tests/unit/distribution-reliability.test.ts tests/integration/distribution-reliability.test.ts tests/unit/routing.test.ts tests/unit/retrieval.test.ts tests/unit/distribution-broker-review.test.ts tests/unit/distribution-cli-broker.test.ts",
-    "benchmark:distribution": "pnpm build && vitest run tests/performance/distribution.test.ts --maxWorkers=1 --no-file-parallelism"
+    "benchmark:distribution": "pnpm build && vitest run tests/performance/distribution.test.ts --maxWorkers=1 --no-file-parallelism",
+    "test:database": "pnpm build && vitest run tests/unit/database-reliability.test.ts tests/integration/database-reliability.test.ts tests/integration/database-cli.test.ts tests/unit/gemini-migration.test.ts tests/unit/retrieval-migration.test.ts tests/unit/core.test.ts tests/unit/experience-scope.test.ts --maxWorkers=2 --no-file-parallelism",
+    "benchmark:database": "pnpm build && vitest run tests/performance/database.test.ts --maxWorkers=1 --no-file-parallelism"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
