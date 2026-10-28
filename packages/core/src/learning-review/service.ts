@@ -58,6 +58,8 @@ export class LearningReviewService extends LearningReviewQuery {
             })),
             checks_truncated: report.evaluation.checks.length > 12,
             behavioral_status: 'NOT_VERIFIED',
+            sandbox_status: report.behavioral ? 'UNAVAILABLE' : 'NOT_RUN',
+            behavioral_evidence_reference: report.behavioral?.evidence_reference ?? null,
             execution_supported: report.capabilities.execution_supported,
             full_report_reference: report.evaluation.id,
           }

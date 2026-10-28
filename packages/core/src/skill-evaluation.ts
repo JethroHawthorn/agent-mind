@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { z } from 'zod';
+import { collectSandboxRefusal, prepareSandboxPlan } from './behavioral/assurance.js';
 import {
   BEHAVIORAL_POLICY,
   behavioralDigest,
@@ -30,6 +31,10 @@ export const skillEvaluateSchema = z
   .strictObject({
     version_id: z.uuid(),
     expected_content_hash: z.string().regex(/^[a-f0-9]{64}$/),
+    expected_plan_digest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
     expected_state_revision: z.number().int().nonnegative(),
     mode: z.enum(['static', 'behavioral']).default('static'),
     suite_id: z
@@ -45,7 +50,8 @@ export const skillEvaluateSchema = z
   .superRefine((p, ctx) => {
     if (
       (p.mode !== 'behavioral' &&
-        (p.suite_id !== undefined ||
+        (p.expected_plan_digest !== undefined ||
+          p.suite_id !== undefined ||
           p.suite_version !== undefined ||
           p.expected_suite_digest !== undefined)) ||
       (p.suite_id === undefined) !== (p.suite_version === undefined)
@@ -70,6 +76,48 @@ export class SkillEvaluationService {
     project: ProjectScope,
   ) {
     this.#project = Object.freeze({ ...project });
+  }
+
+  /** Read-only plan: no migration, evaluation writes, candidate staging or execution. */
+  plan(input: unknown) {
+    const request = skillEvaluateSchema.parse(input);
+    if (request.mode !== 'behavioral')
+      throw new AgentMindError('INVALID_INPUT', 'Planning requires behavioral mode.');
+    return this.db.transaction(() => {
+      this.assertIntegrity(request.version_id);
+      const snapshot = new SkillStore(this.db, this.#project).get({
+        version_id: request.version_id,
+      });
+      if (
+        snapshot.state.status !== 'candidate' ||
+        snapshot.state.revision !== request.expected_state_revision ||
+        snapshot.version.content_hash !== request.expected_content_hash
+      )
+        throw new AgentMindError(
+          'STALE_SKILL_STATE',
+          'Candidate identity, digest or revision changed.',
+        );
+      if (snapshot.identity.active_version_id)
+        this.assertIntegrity(snapshot.identity.active_version_id);
+      const plan = prepareSandboxPlan({
+        version: snapshot.version,
+        name: snapshot.identity.name,
+        state_revision: snapshot.state.revision,
+        identity_revision: snapshot.identity.revision,
+        baseline_version_id: snapshot.identity.active_version_id,
+        selector: {
+          suite_id: request.suite_id ?? DEFAULT_BEHAVIORAL_SUITE,
+          suite_version: request.suite_version ?? 1,
+          ...(request.expected_suite_digest ? { suite_digest: request.expected_suite_digest } : {}),
+        },
+      });
+      return {
+        plan,
+        plan_digest: behavioralDigest(plan),
+        execution_supported: false,
+        untrusted_data: true,
+      };
+    })();
   }
 
   evaluate(input: unknown) {
@@ -126,6 +174,7 @@ export class SkillEvaluationService {
           suite_version: request.suite_version ?? 1,
           ...(request.expected_suite_digest ? { suite_digest: request.expected_suite_digest } : {}),
         };
+        const sandboxPlan = request.mode === 'behavioral' ? this.plan(request) : null;
         const selected = request.mode === 'behavioral' ? resolveBehavioralSuite(selector) : null;
         const regression =
           request.mode === 'behavioral'
@@ -149,8 +198,21 @@ export class SkillEvaluationService {
             identity_revision: snapshot.identity.revision,
           }),
         });
-        if (request.mode === 'behavioral') {
+        if (sandboxPlan) {
+          if (
+            request.expected_plan_digest &&
+            request.expected_plan_digest !== sandboxPlan.plan_digest
+          )
+            throw new AgentMindError(
+              'STALE_EVALUATION_PLAN',
+              'Candidate, suite, policy or environment changed; prepare a fresh plan.',
+            );
           migrateBehavioral(this.db);
+          checks.push({
+            name: 'sandbox.plan',
+            result: 'NOT_VERIFIED',
+            details: sandboxPlan.plan_digest,
+          });
           checks.push(
             {
               name: 'suite.trusted',
@@ -209,7 +271,7 @@ export class SkillEvaluationService {
             report.content_hash,
             report.created_at,
           );
-        if (request.mode === 'behavioral')
+        if (sandboxPlan)
           persistBehavioralEvidence(this.db, report, {
             schema_version: 1,
             policy_version: BEHAVIORAL_POLICY,
@@ -234,6 +296,7 @@ export class SkillEvaluationService {
             execution: disabledBehavioralExecution(),
             comparison_result: 'NOT_VERIFIED',
             evaluation_digest: behavioralDigest(report),
+            assurance: collectSandboxRefusal(sandboxPlan.plan, report.id),
           });
         return this.getReport({ evaluation_id: report.id });
       })

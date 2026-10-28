@@ -4,8 +4,14 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { AgentMindError, inspectProtectedDeployment, inspectRegistry } from '@agentmind/core';
+import {
+  AgentMindError,
+  behavioralSandboxStatus,
+  inspectProtectedDeployment,
+  inspectRegistry,
+} from '@agentmind/core';
 import { DAILY_DOMAINS, dailyHelp, runDailyCLI } from './daily/cli.js';
+import { evaluationHelp, runEvaluationCLI } from './evaluation.js';
 import { runtimeDoctor } from './installer/doctor.js';
 import { diagnosticText } from './installer/files.js';
 import { type Action, diagnostic, EXIT, PROVIDERS, type Provider } from './installer/model.js';
@@ -37,6 +43,10 @@ Exit: 0 success, 2 warnings/incomplete, 3 conflict, 4 arguments, 5 dependency,
 `;
 async function main() {
   process.umask(0o077);
+  if (process.argv[2] === 'evaluation') {
+    runEvaluationCLI(process.argv.slice(3));
+    return;
+  }
   if (DAILY_DOMAINS.includes(process.argv[2] ?? '')) {
     await runDailyCLI(process.argv.slice(2));
     return;
@@ -64,7 +74,7 @@ async function main() {
     },
   });
   if (v.help) {
-    process.stdout.write(`${help}\n${dailyHelp}`);
+    process.stdout.write(`${help}\n${dailyHelp}\n${evaluationHelp}`);
     return;
   }
   const action = positionals[0],
@@ -137,6 +147,7 @@ async function main() {
       model_invocations_authorized: !!v.native,
       protected_deployment: 'NOT_VERIFIED',
       behavioral_sandbox: 'NOT_VERIFIED',
+      behavioral_capabilities: behavioralSandboxStatus(),
     };
     process.exitCode = checks.some((c) => c.status === 'FAIL')
       ? EXIT.verification
@@ -214,6 +225,7 @@ main().catch((e) => {
           ? ((e as NodeJS.ErrnoException).code ?? 'INSTALLER_ARGUMENTS')
           : 'INSTALLER_INTERNAL';
   const exit =
+    code === 'INVALID_INPUT' ||
     code === 'INSTALLER_ARGUMENTS' ||
     code === 'DAILY_INVALID_INPUT' ||
     code === 'DAILY_SCOPE_UNSUPPORTED' ||
@@ -235,9 +247,12 @@ main().catch((e) => {
     schema_version: 1,
     error: {
       code,
-      message: DAILY_DOMAINS.includes(process.argv[2] ?? '')
-        ? 'Daily view/action unavailable or invalid. Use a full scoped ID, refresh a stale review snapshot, or inspect the existing registry with status/doctor. No approval or promotion was performed.'
-        : 'Integration operation could not complete safely. Use --help or doctor; existing data/configuration was not force-overwritten.',
+      message:
+        process.argv[2] === 'evaluation'
+          ? 'Evaluation unavailable or invalid. Refresh the exact candidate plan and inspect evaluation doctor; no candidate code, approval or promotion was executed.'
+          : DAILY_DOMAINS.includes(process.argv[2] ?? '')
+            ? 'Daily view/action unavailable or invalid. Use a full scoped ID, refresh a stale review snapshot, or inspect the existing registry with status/doctor. No approval or promotion was performed.'
+            : 'Integration operation could not complete safely. Use --help or doctor; existing data/configuration was not force-overwritten.',
     },
   };
   (json ? process.stdout : process.stderr).write(`${diagnosticText(out)}\n`);

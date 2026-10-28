@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 import { AgentMindError } from '../errors.js';
 import type { ProjectScope } from '../project.js';
 import { hashSkillFiles, type SkillEvaluation } from '../skill-model.js';
+import { verifySandboxRefusal } from './assurance.js';
 import {
   behavioralDigest,
   behavioralEvidenceSchema,
@@ -52,6 +53,28 @@ export function persistBehavioralEvidence(
   input: unknown,
 ) {
   const evidence = behavioralEvidenceSchema.parse(input);
+  if (
+    evidence.evaluation_id !== evaluation.id ||
+    evidence.project_id !== evaluation.project_id ||
+    evidence.candidate.version_id !== evaluation.version_id ||
+    evidence.candidate.digest !== evaluation.content_hash ||
+    evidence.evaluation_digest !== behavioralDigest(evaluation) ||
+    evaluation.result === 'PASS'
+  )
+    throw new AgentMindError(
+      'BEHAVIORAL_EVIDENCE_INTEGRITY',
+      'Invalid evaluation evidence binding.',
+    );
+  if (
+    evidence.assurance !== undefined ||
+    evaluation.checks.some((c) => c.name === 'sandbox.plan')
+  ) {
+    const row = db
+      .prepare('SELECT files_json FROM skill_versions WHERE id=? AND project_id=?')
+      .get(evaluation.version_id, evaluation.project_id) as { files_json: string } | undefined;
+    if (!row) throw new AgentMindError('BEHAVIORAL_EVIDENCE_INTEGRITY', 'Candidate unavailable.');
+    verifySandboxRefusal(evidence.assurance, evaluation, JSON.parse(row.files_json));
+  }
   const suite = resolveBehavioralSuite(evidence.selector);
   if (suite) {
     const prior = db
@@ -166,6 +189,19 @@ export function readBehavioralEvidence(
         hashSkillFiles(JSON.parse(stored.files_json)) !== artifact.digest
       )
         throw new Error('artifact');
+      if (
+        artifact === evidence.candidate &&
+        (evidence.assurance !== undefined ||
+          evaluation.checks.some((c) => c.name === 'sandbox.plan'))
+      ) {
+        const assurance = verifySandboxRefusal(
+          evidence.assurance,
+          evaluation,
+          JSON.parse(stored.files_json),
+        );
+        if (behavioralDigest(assurance.plan.selector) !== behavioralDigest(evidence.selector))
+          throw new Error('selector');
+      }
     }
     const snapshot = JSON.parse(
       evaluation.checks.find((c) => c.name === 'baseline.snapshot')?.details ?? 'null',

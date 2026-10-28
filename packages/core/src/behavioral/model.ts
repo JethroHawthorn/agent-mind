@@ -200,6 +200,8 @@ export const behavioralEvidenceSchema = z.strictObject({
   }),
   comparison_result: z.literal('NOT_VERIFIED'),
   evaluation_digest: digest,
+  // P5-002 supplemental envelope; validated against release policy and stored artifacts.
+  assurance: z.unknown().optional(),
 });
 /** No injectable callbacks, scripts, commands, subprocesses, network or environment override. */
 export function disabledBehavioralExecution() {
