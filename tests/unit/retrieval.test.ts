@@ -409,7 +409,7 @@ it('migrates an existing v9 registry idempotently, tracks new versions, and refu
   const before = f.retrieval.discover({ query: 'retry' });
   migrateRetrieval(f.db);
   expect(f.retrieval.discover({ query: 'retry' })).toEqual(before);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
   expect(new SkillStore(f.db, f.scope).getVersion(a.version.id).version.content_hash).toBe(
     a.version.content_hash,
   );

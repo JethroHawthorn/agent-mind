@@ -1,18 +1,62 @@
 # Installation and profiles
 
-The global executable is packaged from the existing CLI. This is an unpublished local candidate, version 1.0.0, not an approved V1 release. Users receiving a reviewed `agentmind-1.0.0.tgz` can install it with npm; no source checkout or pnpm is needed at runtime.
+The npm package is `@jethrohawthorn/agentmind`, and its global executable is `agentmind`. Install it with npm; no source checkout or pnpm is needed at runtime.
 
 ```sh
-npm install --global ./agentmind-1.0.0.tgz
+npm install --global @jethrohawthorn/agentmind
 agentmind --help
 agentmind --version
 ```
 
-For isolated prefix installation, use `npm install --global --prefix /tmp/agentmind-prefix ./agentmind-1.0.0.tgz` and invoke `/tmp/agentmind-prefix/bin/agentmind`. The installation test uses a fresh temporary prefix/cache/HOME and installs dependencies through npm. This is developer-host artifact evidence, **not clean-machine certification**.
+For a reviewed local version 1.1.1 artifact, use `npm install --global ./jethrohawthorn-agentmind-1.1.1.tgz`. For isolated prefix installation, use `npm install --global --prefix /tmp/agentmind-prefix ./jethrohawthorn-agentmind-1.1.1.tgz` and invoke `/tmp/agentmind-prefix/bin/agentmind`. The installation test uses a fresh temporary prefix/cache/HOME and installs dependencies through npm. This is developer-host artifact evidence, **not clean-machine certification**.
 
-No public registry release is supplied. `agentmind` is the actual package name; registry availability/ownership is unverified. Direct GitHub installation is excluded: the private source monorepo requires development dependencies and a build, and has no supported Git preparation contract. Maintainers prepare the npm artifact as described in [maintainer guidance](MAINTAINERS.md).
+Direct GitHub installation is excluded: the private source monorepo requires development dependencies and a build, and has no supported Git preparation contract. Maintainers prepare the npm artifact as described in [maintainer guidance](MAINTAINERS.md).
 
 Keep the installed prefix and Node executable available: managed enrollments pin their absolute paths. After moving/replacing either, inspect `agentmind update --dry-run` before applying compatible managed changes. Global npm installation never enrolls a project; only explicit setup changes integration configuration. SQLite's dependency install may download/compile its native binding.
+
+## Antigravity CLI (`agy`)
+
+AgentMind supports Antigravity through **explicit user registration with project-bound enrollment**. The registry and project authorization remain shared with Codex, Claude and legacy Gemini. No automatic Gemini migration or project-to-user fallback occurs.
+
+```sh
+agentmind setup --cli antigravity --scope user --dry-run
+agentmind setup --cli antigravity --scope user --apply
+agentmind status --cli antigravity --scope user
+agentmind doctor --cli antigravity --scope user
+agentmind doctor --cli antigravity --scope user --connect
+agentmind repair --cli antigravity --scope user --dry-run
+agentmind update --cli antigravity --scope user --dry-run
+agentmind uninstall --cli antigravity --scope user --dry-run
+```
+
+Use `--antigravity /absolute/path/to/agy` for an explicit executable. Ordinary status/doctor only inspect files and public version information; no MCP or model starts. `--connect` explicitly checks the enrolled stdio adapter. Setup apply verifies SQLite, schema/FTS, SDK MCP health and the real `agy mcp list` inventory before reporting readiness. It never authenticates or invokes a model.
+
+| Scope | MCP registration | Router Skill |
+| --- | --- | --- |
+| User (supported explicitly) | `~/.gemini/config/mcp_config.json` | `~/.gemini/antigravity-cli/skills/agentmind-router/SKILL.md` |
+| Project | Unsupported for new setup; legacy `.agents/mcp_config.json` is inspected only for owned migration/removal | Legacy owned/shared router is preserved until safe cleanup |
+
+The registration points to the installed absolute Node/adapter/enrollment paths with 19 server-side daily tools. It inherits caller cwd: another project cannot use it to impersonate the enrolled project. One global AgentMind entry supports one enrolled project; attempting another project or registry binding fails closed. Use the same `--scope user` for status, doctor and lifecycle commands. `--cli all` in project scope skips Antigravity with `USER_SCOPE_REQUIRED` and returns incomplete status (2) after configuring the other installed providers.
+
+### Legacy project installation migration
+
+For an AgentMind-owned standalone project entry, run the focused user-scope setup preview above. The plan labels `MIGRATE`, shows the new global registration and separately lists `post_health_operations` for old configuration removal. Explicit apply preserves registry/project binding, stores the old receipt/config in private recovery evidence, and stages the new registration. **Only after SDK health and native inventory verification succeed** is the exact old owned entry removed. Unrelated settings/servers remain. Unowned, edited, ambiguous or cross-project entries are conflicts, not adopted.
+
+A verification failure leaves the old entry and private migration journal intact. Fix the reported issue and rerun focused setup; it re-verifies before cleanup. Uninstalling a pending migration removes the staged user registration and restores the old enrollment/receipt. Shared legacy routers are retained while other managed providers exist. Registry, memory and backups are never deleted. Existing pending database schema migrations still require a backup and the owner-approved digest workflow in [upgrade](UPGRADE.md).
+
+### Plugins and current native evidence
+
+The [official plugin guide](https://antigravity.google/docs/plugins) describes `plugin.json` and `mcp_config.json` inside `.agents/plugins/<name>/`; its CLI install command may stage local plugins globally. With the measured `agy 1.4.10` on 2026-10-29, neither standalone project MCP, project plugin files, nor explicit plugin path registration satisfied `agy mcp list`. Even an accepted globally staged plugin was absent from that MCP inventory, though plugin inventory listed it. AgentMind therefore does not install plugins or advertise verified project-plugin support. A pre-existing `agentmind` plugin is a conflict; unrelated plugins remain untouched.
+
+Version 1.4.10 is host evidence, **not a permanent minimum version**. Historical 1.2.12 reports describe earlier measurements. The successful native tests cover user configuration inventory; direct SDK tests cover initialize/tools/calls/isolation. **NATIVE_ANTIGRAVITY_MODEL_EXECUTION: NOT VERIFIED**. Authenticated cross-agent model workflows, SEC-01 deployment and BE-001 execution remain NOT VERIFIED.
+
+### Troubleshooting
+
+- Missing `agy`: install the official CLI or provide its absolute path.
+- Project scope refused: explicitly select `--cli antigravity --scope user`; no global file is written by the refused request.
+- Malformed/edited config or pre-existing AgentMind plugin: preserve it and inspect ownership; no forced takeover is provided.
+- MCP startup/discovery failure: inspect status, then run focused `doctor --scope user --connect`. Preserve the registry and pending migration journal; rerun setup after fixing the cause.
+- Another project's global entry: resolve ownership in that original project before enrolling another one; never replace its receipt manually.
 
 ## Prerequisites and platforms
 

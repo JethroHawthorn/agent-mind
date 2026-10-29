@@ -15,6 +15,15 @@ export async function runtimeDoctor(
   const c = service.context,
     report: Diagnostic[] = [];
   const inspected = service.adapters[id].inspect();
+  if (inspected.state === 'UNSUPPORTED_SCOPE')
+    return [
+      diagnostic(
+        `${id}.runtime`,
+        'SKIP',
+        'Use --cli antigravity --scope user explicitly; no project runtime started.',
+        id,
+      ),
+    ];
   if (
     inspected.state !== 'CONFIGURED' &&
     !(

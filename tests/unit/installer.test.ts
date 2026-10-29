@@ -54,8 +54,9 @@ it('plans deterministically without creating configuration, receipts or registry
 });
 it('installs all together, keeps one shared router, and reverses safe removal without data deletion', () => {
   const f = fixture();
+  const ids = ['codex', 'claude', 'gemini'] as const;
   writeFileSync(f.options.database, 'REGISTRY_SENTINEL');
-  const plans = f.service.plan('setup');
+  const plans = f.service.plan('setup', ids);
   expect(plans.map((p) => p.disposition)).toEqual(['INSTALL', 'INSTALL', 'INSTALL']);
   expect(
     plans
@@ -65,13 +66,13 @@ it('installs all together, keeps one shared router, and reverses safe removal wi
       ),
   ).toBe(true);
   f.service.apply(plans);
-  expect(f.service.status().integrations.every((i) => i.state === 'CONFIGURED')).toBe(true);
+  expect(f.service.status(ids).integrations.every((i) => i.state === 'CONFIGURED')).toBe(true);
   expect(existsSync(join(f.root, '.gemini/skills/agentmind-router/SKILL.md'))).toBe(false);
-  expect(f.service.plan('setup').every((p) => p.disposition === 'SKIP')).toBe(true);
+  expect(f.service.plan('setup', ids).every((p) => p.disposition === 'SKIP')).toBe(true);
   expect(f.service.plan('uninstall', ['codex'])[0]?.disposition).toBe('CONFLICT');
-  const remove = f.service.plan('uninstall');
+  const remove = f.service.plan('uninstall', ids);
   f.service.apply(remove);
-  expect(f.service.plan('uninstall').every((p) => p.disposition === 'SKIP')).toBe(true);
+  expect(f.service.plan('uninstall', ids).every((p) => p.disposition === 'SKIP')).toBe(true);
   expect(readFileSync(f.options.database, 'utf8')).toBe('REGISTRY_SENTINEL');
 }, 30000);
 it('preserves unrelated config, hooks and instructions while removing one independent provider', () => {
@@ -280,12 +281,13 @@ it('recovers a fixture-simulated interrupted provider setup through its existing
 });
 it('restores a shared missing router in dependency order with an explicit repair plan', () => {
   const f = fixture();
-  f.service.apply(f.service.plan('setup'));
+  const ids = ['codex', 'claude', 'gemini'] as const;
+  f.service.apply(f.service.plan('setup', ids));
   unlinkSync(join(f.root, '.agents/skills/agentmind-router/SKILL.md'));
-  const p = f.service.plan('repair');
+  const p = f.service.plan('repair', ids);
   expect(p.some((x) => x.disposition === 'CONFLICT')).toBe(false);
   f.service.apply(p);
-  expect(f.service.status().integrations.every((i) => i.state === 'CONFIGURED')).toBe(true);
+  expect(f.service.status(ids).integrations.every((i) => i.state === 'CONFIGURED')).toBe(true);
 }, 30000);
 it('same-UID supervised setup never reports protected operator authorization or behavioral PASS', () => {
   const f = fixture();

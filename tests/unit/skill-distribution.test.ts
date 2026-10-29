@@ -339,7 +339,7 @@ it('opens planning connections read-only, refuses migration in dry-run, and roll
   expect(f.db.pragma('user_version', { simple: true })).toBe(7);
   expect(f.db.pragma('foreign_keys', { simple: true })).toBe(1);
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
   expect(f.store.getVersion(f.candidate.version.id)).toEqual(old);
 });
 

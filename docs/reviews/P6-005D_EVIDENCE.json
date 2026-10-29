@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "phase": "P6-005D",
+  "date": "2026-10-29",
+  "candidate": "@jethrohawthorn/agentmind@1.1.0",
+  "publication": "NOT_PERFORMED",
+  "release_decision": "BLOCKED_NATIVE_PROJECT_DISCOVERY_AND_REMAINING_NATIVE_ACCEPTANCE",
+  "published_baseline": {
+    "command": "npm view @jethrohawthorn/agentmind version --cache /tmp/agentmind-npm-name-check --fetch-retries=0 --fetch-timeout=10000",
+    "exit_code": 0,
+    "output": "1.0.0\n"
+  },
+  "native_model_execution": "NATIVE_ANTIGRAVITY_MODEL_EXECUTION: NOT VERIFIED",
+  "authenticated_cross_agent_model_execution": "NOT VERIFIED",
+  "direct_cross_adapter_mcp": {
+    "status": "PASS",
+    "providers": [
+      "codex",
+      "claude",
+      "gemini",
+      "antigravity"
+    ],
+    "real_model_execution": false
+  },
+  "public_native_version": {
+    "executable": "/Users/jethro/.local/bin/agy",
+    "version": "1.2.12",
+    "public_version_probe": "PASS",
+    "authentication": "NOT VERIFIED"
+  },
+  "public_help_outputs": {
+    "agy --help": "Usage of agy:\n  --add-dir                       Add a directory to the workspace (repeatable) (default [])\n  --agent                         Agent for the current CLI session\n  -c                              Short alias for --continue\n  --continue                      Continue the most recent conversation\n  --conversation                  Resume a previous conversation by ID\n  --dangerously-skip-permissions  Auto-approve all tool permission requests without prompting\n  --disable-slash-commands        Disable slash command and skill expansion in print mode\n  --effort                        Reasoning effort for the current CLI session (low|medium|high|xhigh|max)\n  -i                              Short alias for --prompt-interactive\n  --input-format                  Input format for print mode (text, stream-json). stream-json reads one NDJSON message per line from stdin and runs a turn for each; it requires --output-format stream-json (default text)\n  --json-schema                   Optional JSON schema string or path to a schema file to enforce structured output (for stream-json, only applicable to the final result)\n  --log-file                      Override CLI log file path\n  --mode                          Set the agent execution mode for this session (accept-edits, auto, plan)\n  --model                         Model for the current CLI session\n  --new-project                   Create a new project for this session\n  --output-format                 Output format for print mode (text, json, stream-json) (default text)\n  -p                              Short alias for --print\n  --print                         Run a single prompt non-interactively and print the response\n  --print-timeout                 Optional time limit for print mode; 0 waits until the turn completes (default 0s)\n  --project                       Project ID or project name for the current CLI session\n  --prompt                        Alias for --print\n  --prompt-interactive            Run an initial prompt interactively and continue the session\n  --remote-control                Create a remote connection for the CLI session on start up\n  --sandbox                       Run in a sandbox with terminal restrictions enabled\n  --settings                      Settings for this session only, never saved: a JSON object of settings.json keys, inline or as a file path\n\nAvailable subcommands:\n  agent           List available agents\n  agents          List available agents\n  changelog       Show changelog and release notes\n  help            Show help for subcommands\n  install         Configure environment paths and shell settings\n  mcp             Manage MCP servers (add, remove, list, enable, disable)\n  mic-serve       Serve this machine's microphone to a CLI on another host\n  models          List available models\n  plugin          Manage plugins (install, uninstall, list, enable, disable)\n  plugins         Alias for plugin\n  remote-control  Manage the remote-control background daemon (start, status, stop)\n  update          Update CLI\n",
+    "agy mcp --help": "Usage: agy mcp <subcommand> [flags] [args]\n\nAvailable subcommands:\n  add      Add or update an MCP server configuration\n  remove   Remove an MCP server configuration\n  list     List all configured MCP servers\n  enable   Enable an MCP server\n  disable  Disable an MCP server\n\nRun \"agy mcp <subcommand> --help\" for flags, argument rules, and examples.\n",
+    "agy mcp list --help": "Usage: agy mcp list [flags]\n\nList all configured MCP servers\n\nFlags:\n  -h      Show help\n  --help  Show help\n"
+  },
+  "default_regression": {
+    "test_files_passed": 112,
+    "test_files_skipped": 2,
+    "tests_passed": 1359,
+    "tests_failed": 0,
+    "tests_skipped": 3,
+    "total_tests": 1362,
+    "duration_seconds": 283.87,
+    "skip_reasons": [
+      "Global npm prefix test requires explicit smoke harness (run separately and passed).",
+      "Two real native config-discovery tests require AGENTMIND_ANTIGRAVITY_EXECUTABLE (run separately: one passed, one failed)."
+    ]
+  },
+  "native_config_suite": {
+    "passed": 1,
+    "failed": 1,
+    "global_config": "PASS",
+    "project_config": "FAIL: No MCP servers configured.",
+    "repeated_with_disposable_git_repository": true,
+    "model_execution": false
+  },
+  "architecture": {
+    "status": "PASS",
+    "contract_matches": true,
+    "contract_sha256": "510bb9e5e633245a3d3843570009328df859e9517533b262a2d74ffa2368e95e",
+    "violations": [],
+    "runtime_cycles": [
+      [
+        "packages/core/src/errors.ts",
+        "packages/core/src/privacy.ts"
+      ]
+    ],
+    "release_approved": false
+  },
+  "artifact": {
+    "artifact": "/Users/jethro/Desktop/WorkSpace/personal/agent-mind/dist/artifacts/jethrohawthorn-agentmind-1.1.0.tgz",
+    "sha256": "aba3224c519db5e729ba75c2a344be9f147dde5ddb6b754bdc28cd329cfcb00c",
+    "npm_integrity": "sha512-6jylJP158X1j+iLs1P+SxCqCfoFmQkVDrY+0iYshcz44fuJgvYT+bW59+Q2bo9l/1lT0PKQmHimQXPkwH1ESqA==",
+    "bytes": 263408,
+    "unpacked_bytes": 1110080,
+    "environment": {
+      "node": "v22.13.1",
+      "platform": "darwin",
+      "arch": "arm64"
+    }
+  },
+  "artifact_files": 182,
+  "artifact_manifest": "dist/artifacts/jethrohawthorn-agentmind-1.1.0.manifest.json",
+  "retained_global_installation": "/private/var/folders/0d/jyw7f9s96kq4bx_0291cd3m40000gn/T/agentmind-global-APLtMc",
+  "commands": [
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "exact_output": "\n> @jethrohawthorn/agentmind@1.1.0 lint\n> biome check --error-on-warnings .\n\ntests/unit/learning-review.test.ts:523:15 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  i Template literals are preferred over string concatenation.\n  \n    521 │     expected_file_digest: fileDigest(notes.content),\n    522 │     old_text: notes.content,\n  > 523 │     new_text: notes.content + 'Inspect retry exhaustion before reporting the outcome.\\n',\n        │               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    524 │   });\n    525 │   const r = f.service.submit(p);\n  \n  i Template literals are easier to read than a chain of + operators and quotes, and they avoid mistakes with spaces and escaped quotes.\n  \n  i Unsafe fix: Use a template literal.\n  \n    521 521 │       expected_file_digest: fileDigest(notes.content),\n    522 522 │       old_text: notes.content,\n    523     │ - ····new_text:·notes.content·+·'Inspect·retry·exhaustion·before·reporting·the·outcome.\\n',\n        523 │ + ····new_text:·`${notes.content}Inspect·retry·exhaustion·before·reporting·the·outcome.\\n`,\n    524 524 │     });\n    525 525 │     const r = f.service.submit(p);\n  \n\nChecked 348 files in 258ms. No fixes applied.\nFound 1 info.\n"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "exact_output": "\n> @jethrohawthorn/agentmind@1.1.0 typecheck\n> tsc --noEmit -p tsconfig.check.json\n\n"
+    },
+    {
+      "command": "npm run build:cli",
+      "exit_code": 0,
+      "exact_output": "\n> @jethrohawthorn/agentmind@1.1.0 build:cli\n> node scripts/package-cli.mjs --build\n\n"
+    },
+    {
+      "command": "npm test -- --maxWorkers=2",
+      "exit_code": 0,
+      "exact_output": "\n> @jethrohawthorn/agentmind@1.1.0 test\n> pnpm build && vitest run --maxWorkers=2\n\n$ pnpm --filter @agentmind/core build && pnpm --filter @agentmind/mcp-server build\n$ tsc -p tsconfig.json\n$ tsc -p tsconfig.json\n\n RUN  v4.1.12 /Users/jethro/Desktop/WorkSpace/personal/agent-mind\n\n\n Test Files  112 passed | 2 skipped (114)\n      Tests  1359 passed | 3 skipped (1362)\n   Start at  17:24:02\n   Duration  283.87s (transform 2.71s, setup 0ms, import 19.40s, tests 535.84s, environment 6ms)\n\n"
+    },
+    {
+      "command": "node scripts/docs-check.mjs",
+      "exit_code": 0,
+      "exact_output": "{\n  \"schema_version\": 1,\n  \"status\": \"PASS\",\n  \"files\": 15,\n  \"local_links\": 54,\n  \"shell_blocks\": 22,\n  \"json_blocks\": 2,\n  \"errors\": [],\n  \"scope\": \"Curated docs links/JSON/shell syntax and caveats; command execution is tested separately. No remote link or arbitrary documentation execution.\"\n}\n"
+    },
+    {
+      "command": "npm run smoke",
+      "exit_code": 0,
+      "exact_output": "\n> @jethrohawthorn/agentmind@1.1.0 smoke\n> node scripts/smoke.mjs\n\n[agentmind] ready (stdio, project scoped)\n[agentmind] ready (stdio, project scoped)\n[agentmind] ready (stdio, project scoped)\n[agentmind] ready (stdio, project scoped)\n[agentmind] ready (stdio, project scoped)\n[agentmind] ready (stdio, project scoped)\nPASS: memory + experience sharing across SDK client/server processes, restart persistence, project isolation. Real CLIs were not exercised.\n"
+    },
+    {
+      "command": "node scripts/verify-global-cli.mjs",
+      "exit_code": 0,
+      "exact_output": "\n RUN  v4.1.12 /Users/jethro/Desktop/WorkSpace/personal/agent-mind\n\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  17:24:11\n   Duration  26.49s (transform 463ms, setup 0ms, import 687ms, tests 25.69s, environment 0ms)\n\n\nEvidence retained: /private/var/folders/0d/jyw7f9s96kq4bx_0291cd3m40000gn/T/agentmind-global-APLtMc\n"
+    },
+    {
+      "command": "node scripts/package-evidence.mjs dist/artifacts/pack-1.1.0.json dist/artifacts/jethrohawthorn-agentmind-1.1.0.tgz",
+      "exit_code": 0,
+      "exact_output": "{\"sha256\":\"aba3224c519db5e729ba75c2a344be9f147dde5ddb6b754bdc28cd329cfcb00c\",\"files\":182,\"bytes\":263408}\n"
+    },
+    {
+      "command": "AGENTMIND_ANTIGRAVITY_EXECUTABLE=/Users/jethro/.local/bin/agy node node_modules/vitest/vitest.mjs run tests/integration/antigravity-native.test.ts --maxWorkers=1",
+      "exit_code": 1,
+      "exact_output": "\n RUN  v4.1.12 /Users/jethro/Desktop/WorkSpace/personal/agent-mind\n\n ❯ tests/integration/antigravity-native.test.ts (2 tests | 1 failed) 886ms\n   × real agy mcp list discovers independently managed project config without authenticating or invoking a model 371ms\n\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\n\n FAIL  tests/integration/antigravity-native.test.ts > real agy mcp list discovers independently managed project config without authenticating or invoking a model\nAssertionError: expected 'No MCP servers configured.\\n' to contain 'agentmind'\n\n- Expected\n+ Received\n\n- agentmind\n+ No MCP servers configured.\n+\n\n ❯ tests/integration/antigravity-native.test.ts:45:24\n     43|         service.apply(service.plan('setup', ['antigravity']));\n     44|         const output = list();\n     45|         expect(output).toContain('agentmind');\n       |                        ^\n     46|         expect(output).toContain('antigravity/adapter.js');\n     47|         service.apply(service.plan('uninstall', ['antigravity']));\n\n⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯\n\n\n Test Files  1 failed (1)\n      Tests  1 failed | 1 passed (2)\n   Start at  17:13:18\n   Duration  1.51s (transform 360ms, setup 0ms, import 507ms, tests 886ms, environment 0ms)\n\n"
+    },
+    {
+      "command": "node node_modules/vitest/vitest.mjs run tests/unit/antigravity-setup.test.ts tests/unit/skill-model.test.ts tests/unit/skill-proposal.test.ts tests/unit/skill-operator.test.ts tests/unit/skill-usage.test.ts tests/unit/skill-distribution.test.ts --maxWorkers=2",
+      "exit_code": 0,
+      "exact_output": "\n RUN  v4.1.12 /Users/jethro/Desktop/WorkSpace/personal/agent-mind\n\n\n Test Files  6 passed (6)\n      Tests  147 passed (147)\n   Start at  17:12:44\n   Duration  14.98s (transform 1.05s, setup 0ms, import 1.90s, tests 17.85s, environment 0ms)\n\n"
+    }
+  ],
+  "initial_attempts": {
+    "sandbox_regression": "Interrupted after Unix-socket permission failures; not used as final regression result.",
+    "sandbox_npm_smoke": "Dependency installation timed out; rerun with host permission.",
+    "first_host_regression": "1348 passed, 10 failed, 1 skipped; stale schema/reconstructed migration fixtures fixed before final full rerun.",
+    "first_host_npm_smoke": "Installation, four adapters and retained memory worked; final old Page items: 3 assertion failed on four memories. Updated to 4, repeated full installation smoke passed."
+  },
+  "limitations": [
+    "Actual interactive /mcp workspace behavior and native connected tool execution remain unverified.",
+    "Existing schema 11 registries require backup and owner-approved schema 12 digest migration.",
+    "Independent artifact/security review, clean-host/platform/native dependency provenance and native model acceptance remain outstanding."
+  ]
+}

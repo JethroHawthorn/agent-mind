@@ -145,7 +145,7 @@ it('backs up real original v1, restores offline before migration, rejects stale 
   unchanged.close();
   migrateDatabase(path, plan.digest);
   const upgraded = new Database(path);
-  expect(upgraded.pragma('user_version', { simple: true })).toBe(11);
+  expect(upgraded.pragma('user_version', { simple: true })).toBe(12);
   expect(upgraded.prepare('SELECT id,content,status FROM memories').all()).toEqual([
     { id: 'original-id', content: 'preserved knowledge', status: 'unverified' },
   ]);

@@ -1,10 +1,24 @@
 // Explicit network/native dependency installation into a disposable global prefix.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 
+const { values } = parseArgs({
+  options: { archive: { type: 'string' }, 'pack-metadata': { type: 'string' } },
+  strict: true,
+});
+const logs = [];
 const root = fileURLToPath(new URL('../', import.meta.url));
 const work = realpathSync(mkdtempSync(join(tmpdir(), 'agentmind-global-')));
 for (const directory of ['home', 'prefix', 'cache', 'project'])
@@ -27,13 +41,25 @@ function run(command, args, options = {}) {
     timeout: 300000,
     ...options,
   });
+  logs.push({
+    command,
+    args,
+    cwd: options.cwd ?? root,
+    exit_code: result.status,
+    stdout: result.stdout,
+    stderr: result.stderr,
+  });
+  writeFileSync(join(work, 'commands.json'), JSON.stringify(logs, null, 2));
   if (result.status !== 0)
     throw Error(`${command} ${args.join(' ')}\n${result.stdout}\n${result.stderr}`);
   return result.stdout;
 }
 try {
-  const metadata = JSON.parse(run('npm', ['pack', '--pack-destination', work, '--json']));
-  const archive = join(work, metadata[0].filename);
+  const metadata = values.archive
+    ? JSON.parse(readFileSync(values['pack-metadata'], 'utf8'))
+    : JSON.parse(run('npm', ['pack', '--pack-destination', work, '--json']));
+  const archive = join(work, basename(metadata[0].filename));
+  if (values.archive) copyFileSync(values.archive, archive);
   const installLog = run('npm', ['install', '--global', '--no-audit', '--no-fund', archive], {
     cwd: join(work, 'project'),
   });

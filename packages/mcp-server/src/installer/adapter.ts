@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { AgentMindError } from '@agentmind/core';
+import { AntigravitySetup } from '../antigravity/setup.js';
 import { mcpDocument } from '../claude/configuration.js';
 import { ClaudeSetup } from '../claude/setup.js';
 import { configBlock } from '../codex/configuration.js';
@@ -31,7 +32,7 @@ export type Context = {
   systemSettings?: string;
   isolatedHome?: boolean;
 };
-type Setup = CodexSetup | ClaudeSetup | GeminiSetup;
+type Setup = CodexSetup | ClaudeSetup | GeminiSetup | AntigravitySetup;
 type Pending = {
   plan: InstallPlan;
   originalId: string;
@@ -76,12 +77,21 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
           ? join(c.root, '.codex/config.toml')
           : this.id === 'claude'
             ? join(c.root, '.mcp.json')
-            : join(c.scope === 'user' ? c.home : c.root, '.gemini/settings.json'),
+            : this.id === 'antigravity'
+              ? join(
+                  c.scope === 'user' ? c.home : c.root,
+                  c.scope === 'user' ? '.gemini/config/mcp_config.json' : '.agents/mcp_config.json',
+                )
+              : join(c.scope === 'user' ? c.home : c.root, '.gemini/settings.json'),
       router: join(
         this.id === 'codex' || c.scope === 'project' ? c.root : c.home,
-        this.id === 'codex'
-          ? '.agents/skills/agentmind-router/SKILL.md'
-          : `.${this.id}/skills/agentmind-router/SKILL.md`,
+        this.id === 'antigravity'
+          ? c.scope === 'project'
+            ? '.agents/skills/agentmind-router/SKILL.md'
+            : '.gemini/antigravity-cli/skills/agentmind-router/SKILL.md'
+          : this.id === 'codex'
+            ? '.agents/skills/agentmind-router/SKILL.md'
+            : `.${this.id}/skills/agentmind-router/SKILL.md`,
       ),
     };
   }
@@ -102,7 +112,7 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
     const r = this.receipt();
     const s =
       r && !['removed', 'uninstalled'].includes(String(r.phase))
-        ? this.id === 'gemini'
+        ? this.id === 'gemini' || this.id === 'antigravity'
           ? r.router_content
           : r.router
         : undefined;
@@ -127,6 +137,13 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
         home: c.isolatedHome ? c.home : undefined,
         claude: d.executable ?? process.execPath,
       });
+    if (this.id === 'antigravity')
+      return new AntigravitySetup({
+        ...base,
+        home: c.home,
+        scope: c.scope,
+        plannedSharedRouter: c.scope === 'project' && this.#shared,
+      });
     return new GeminiSetup({
       ...base,
       scope: c.scope,
@@ -144,6 +161,8 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
     const result: Inspection = {
       cli: this.id,
       detection: d,
+      config_path: this.paths().config,
+      registry_path: this.context.database,
       state: d.state,
       scope: this.context.scope,
       managed: false,
@@ -155,6 +174,19 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
       hook_validation: this.id === 'codex' ? 'NOT_APPLICABLE' : 'NOT_VERIFIED',
       diagnostics: [],
     };
+    if (this.id === 'antigravity' && this.context.scope === 'project') {
+      result.state = 'UNSUPPORTED_SCOPE';
+      result.mcp = 'NOT_VERIFIED';
+      result.diagnostics.push(
+        diagnostic(
+          'antigravity.scope',
+          'WARNING',
+          'Standalone project MCP discovery is unsupported. Use --cli antigravity --scope user explicitly; enrollment remains project-bound.',
+          this.id,
+        ),
+      );
+      return result;
+    }
     try {
       const s = this.setup(),
         r = this.receipt(),
@@ -166,7 +198,7 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
           ? this.paths().router
           : this.id === 'claude'
             ? (s as ClaudeSetup).routerPath
-            : ((s as GeminiSetup).state()?.router.path ?? this.paths().router);
+            : ((s as GeminiSetup | AntigravitySetup).state()?.router.path ?? this.paths().router);
       const router = readBounded(
         this.context.scope === 'user' && this.id !== 'codex'
           ? this.context.home
@@ -174,13 +206,24 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
         path,
       );
       const installed = st.installed;
+      if ('migration_pending' in st && st.migration_pending)
+        result.diagnostics.push(
+          diagnostic(
+            'antigravity.migration',
+            'WARNING',
+            'Migration is staged; rerun setup --cli antigravity --scope user --apply to verify before legacy cleanup. Uninstall rolls back the pending registration.',
+            this.id,
+          ),
+        );
       result.router_candidates = [this.context.root, this.context.home]
         .flatMap((root) =>
           (this.id === 'gemini'
             ? ['.agents', '.gemini']
-            : this.id === 'codex'
-              ? ['.agents']
-              : ['.claude']
+            : this.id === 'antigravity'
+              ? ['.agents', '.gemini/antigravity-cli']
+              : this.id === 'codex'
+                ? ['.agents']
+                : ['.claude']
           ).map((dir) => join(root, dir, 'skills/agentmind-router/SKILL.md')),
         )
         .filter((path) => existsSync(path)).length;
@@ -206,7 +249,7 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
                   'settings.json',
                 ),
               ]
-            : (s as GeminiSetup).layers.map((l) => l.path);
+            : (s as GeminiSetup | AntigravitySetup).layers.map((l) => l.path);
         for (const path of paths) {
           if (!existsSync(path)) continue;
           try {
@@ -234,7 +277,8 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
               ? 'UNOWNED_OR_CONFLICT'
               : router !== this.context.router
                 ? 'MANAGED_OUTDATED'
-                : this.id === 'gemini' && (s as GeminiSetup).state()?.router.owned === false
+                : (s instanceof GeminiSetup || s instanceof AntigravitySetup) &&
+                    s.state()?.router.owned === false
                   ? 'REUSED_READ_ONLY'
                   : 'MANAGED_CURRENT';
       result.mcp =
@@ -279,7 +323,14 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
     } catch (e) {
       result.state = 'CONFIG_ERROR';
       result.diagnostics.push(
-        diagnostic(`${this.id}.configuration`, 'FAIL', this.code(e), this.id),
+        diagnostic(
+          `${this.id}.configuration`,
+          'FAIL',
+          this.code(e) === 'ANTIGRAVITY_SCOPE_UNSUPPORTED'
+            ? 'ANTIGRAVITY_SCOPE_UNSUPPORTED: Use --cli antigravity --scope user; project authorization remains enforced.'
+            : this.code(e),
+          this.id,
+        ),
       );
     }
     return result;
@@ -296,20 +347,26 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
     const files: Watch[] = [
       { root, path: p.state },
       { root, path: p.enrollment },
-      { root: this.id === 'gemini' && c.scope === 'user' ? c.home : root, path: p.config },
+      {
+        root:
+          (this.id === 'gemini' || this.id === 'antigravity') && c.scope === 'user' ? c.home : root,
+        path: p.config,
+      },
       { root: this.id !== 'codex' && c.scope === 'user' ? c.home : root, path: p.router },
       { root: root, path: join(root, `.agentmind/${this.id}/.gitignore`) },
     ];
     for (const home of [root, c.home])
       for (const dir of this.id === 'gemini'
         ? ['.agents', '.gemini']
-        : this.id === 'codex'
-          ? ['.agents']
-          : ['.claude']) {
+        : this.id === 'antigravity'
+          ? ['.agents', '.gemini/antigravity-cli']
+          : this.id === 'codex'
+            ? ['.agents']
+            : ['.claude']) {
         const path = join(home, dir, 'skills/agentmind-router/SKILL.md');
         if (!files.some((w) => w.path === path)) files.push({ root: home, path });
       }
-    if (s instanceof GeminiSetup)
+    if (s instanceof GeminiSetup || s instanceof AntigravitySetup)
       for (const l of s.layers) {
         const path = l.path;
         if (!files.some((w) => w.path === path)) {
@@ -325,7 +382,7 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
       if (path) files.push({ root: join(path, '..'), path, opaque: path !== c.adapters[this.id] });
     return [...new Map(files.map((f) => [f.path, f])).values()];
   }
-  plan(action: Action): InstallPlan {
+  plan(action: Action, skipUnsupported = false): InstallPlan {
     const c = this.context,
       p = this.paths(),
       d = this.detect();
@@ -384,11 +441,33 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
           : join(c.root, `.agentmind/${this.id}/backup-${installationId}.json`),
       );
       if (c.scope === 'user' && this.id !== 'codex')
-        plan.journal_paths.push(join(c.home, `.${this.id}/agentmind-integration/setup.lock`));
+        plan.journal_paths.push(
+          join(
+            c.home,
+            this.id === 'antigravity'
+              ? '.gemini/antigravity-cli/agentmind-integration/setup.lock'
+              : `.${this.id}/agentmind-integration/setup.lock`,
+          ),
+        );
       const r = this.receipt();
       const old = this.oldRouter();
       const active = !!r && !['removed', 'uninstalled'].includes(String(r.phase));
-      if ((action === 'repair' || action === 'update') && !active) {
+      if (
+        skipUnsupported &&
+        this.id === 'antigravity' &&
+        c.scope === 'project' &&
+        action !== 'uninstall'
+      ) {
+        plan.disposition = 'SKIP';
+        plan.diagnostics.push(
+          diagnostic(
+            'antigravity.scope',
+            'WARNING',
+            'USER_SCOPE_REQUIRED: Antigravity was skipped; use --cli antigravity --scope user explicitly.',
+            this.id,
+          ),
+        );
+      } else if ((action === 'repair' || action === 'update') && !active) {
         plan.disposition = 'SKIP';
         plan.diagnostics.push(
           diagnostic(
@@ -404,18 +483,25 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
       } else {
         nativePlan = s.plan(installationId);
         const raw = nativePlan;
+        if (active && old !== c.router && s instanceof AntigravitySetup)
+          s.validateRouterUpdate(c.router);
         plan.disposition =
-          active && old !== c.router
-            ? 'UPDATE'
-            : raw.action === 'INSTALL'
-              ? 'INSTALL'
-              : raw.action === 'SKIP'
-                ? s.status().installed
-                  ? 'SKIP'
-                  : 'REPAIR'
-                : raw.action === 'REPAIR'
-                  ? 'REPAIR'
-                  : 'REPAIR';
+          raw.action === 'MIGRATE'
+            ? 'MIGRATE'
+            : active &&
+                (old !== c.router ||
+                  (s instanceof AntigravitySetup &&
+                    JSON.stringify(s.state()?.entry) !== JSON.stringify(s.entry())))
+              ? 'UPDATE'
+              : raw.action === 'INSTALL'
+                ? 'INSTALL'
+                : raw.action === 'SKIP'
+                  ? s.status().installed
+                    ? 'SKIP'
+                    : 'REPAIR'
+                  : raw.action === 'REPAIR'
+                    ? 'REPAIR'
+                    : 'REPAIR';
       }
       const operations: FileOperation[] = [];
       if (plan.disposition !== 'SKIP') {
@@ -460,10 +546,15 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
                   ? nativePlan.receipt
                   : null;
           if (!raw) throw Error();
-          const entry = raw.entry,
+          const entry =
+              s instanceof AntigravitySetup && plan.disposition === 'UPDATE'
+                ? s.entry()
+                : raw.entry,
             doc = mcpDocument(
               readBounded(
-                s instanceof GeminiSetup && c.scope === 'user' ? c.home : rootOf(c),
+                (s instanceof GeminiSetup || s instanceof AntigravitySetup) && c.scope === 'user'
+                  ? c.home
+                  : rootOf(c),
                 p.config,
               ),
             );
@@ -471,7 +562,9 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
             delete doc.mcpServers[s.serverName];
           if (action !== 'uninstall') doc.mcpServers[s.serverName] = entry;
           const configBefore = readBounded(
-            s instanceof GeminiSetup && c.scope === 'user' ? c.home : c.root,
+            (s instanceof GeminiSetup || s instanceof AntigravitySetup) && c.scope === 'user'
+              ? c.home
+              : c.root,
             p.config,
           );
           const originalText = 'config_before' in raw ? raw.config_before : raw.before;
@@ -482,9 +575,12 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
               : `${JSON.stringify(doc, null, 2)}\n`;
           if (!(s instanceof ClaudeSetup && c.scope === 'user'))
             operations.push(this.operation(p.config, configBefore, configAfter, active, true));
-          const routerPath = s instanceof GeminiSetup ? rawRouter(raw, p.router) : s.routerPath;
+          const routerPath =
+            s instanceof GeminiSetup || s instanceof AntigravitySetup
+              ? rawRouter(raw, p.router)
+              : s.routerPath;
           const own =
-            s instanceof GeminiSetup
+            s instanceof GeminiSetup || s instanceof AntigravitySetup
               ? (raw as ReturnType<GeminiSetup['plan']>['receipt']).router.owned
               : true;
           const routerRoot = routerPath.startsWith(`${c.root}/`) ? c.root : c.home;
@@ -505,7 +601,12 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
               p.enrollment,
               readBounded(c.root, p.enrollment),
               action === 'uninstall'
-                ? null
+                ? s instanceof AntigravitySetup &&
+                  'migration' in raw &&
+                  raw.migration &&
+                  !raw.migration.completed
+                  ? raw.migration.legacy.enrollment
+                  : null
                 : plan.disposition === 'UPDATE'
                   ? JSON.stringify({
                       ...JSON.parse(raw.enrollment),
@@ -533,6 +634,13 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
         });
       }
       plan.operations = operations;
+      if (s instanceof AntigravitySetup && c.scope === 'user' && action !== 'uninstall') {
+        const removal = s.legacyRemoval();
+        if (removal)
+          plan.post_health_operations = [
+            this.operation(removal.path, removal.before, removal.after, true, true),
+          ];
+      }
       plan.preconditions_digest = digest(JSON.stringify(files));
       plan.id = digest(JSON.stringify(plan));
       this.#pending.set(plan, {
@@ -546,7 +654,16 @@ export class IntegrationAdapter implements CliIntegrationAdapter {
         uninstall: action === 'uninstall',
       });
     } catch (e) {
-      plan.diagnostics.push(diagnostic(`${this.id}.plan`, 'FAIL', this.code(e), this.id));
+      plan.diagnostics.push(
+        diagnostic(
+          `${this.id}.plan`,
+          'FAIL',
+          this.code(e) === 'ANTIGRAVITY_SCOPE_UNSUPPORTED'
+            ? 'ANTIGRAVITY_SCOPE_UNSUPPORTED: Use --cli antigravity --scope user; project authorization remains enforced.'
+            : this.code(e),
+          this.id,
+        ),
+      );
       plan.id = digest(JSON.stringify(plan));
     }
     return plan;

@@ -1,7 +1,7 @@
 {
-  "name": "agentmind",
+  "name": "@jethrohawthorn/agentmind",
   "author": "Jethro",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "type": "module",
   "packageManager": "pnpm@11.6.0",
   "engines": {
@@ -80,10 +80,11 @@
     "memory",
     "codex",
     "claude",
-    "gemini"
+    "gemini",
+    "antigravity"
   ],
   "bin": {
-    "agentmind": "./dist/runtime/packages/mcp-server/dist/agentmind.js"
+    "agentmind": "dist/runtime/packages/mcp-server/dist/agentmind.js"
   },
   "files": [
     "dist/runtime/",

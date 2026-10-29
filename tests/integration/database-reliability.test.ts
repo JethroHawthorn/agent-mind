@@ -87,7 +87,7 @@ it('SIGKILL during migration DDL leaves version and schema unchanged; retry succ
   ).toBeUndefined();
   before.close();
   const after = openDatabase(f.path);
-  expect(after.pragma('user_version', { simple: true })).toBe(11);
+  expect(after.pragma('user_version', { simple: true })).toBe(12);
   after.close();
 });
 it('hook connection busy budget is bounded and never duplicates failed writes', async () => {
@@ -166,8 +166,8 @@ it('two processes race a reconstructed v10 upgrade while a reader holds its snap
     expect(results.every((r) => r.code === 0)).toBe(true);
     expect(reader.pragma('user_version', { simple: true })).toBe(10);
     reader.exec('COMMIT');
-    expect(db.pragma('user_version', { simple: true })).toBe(11);
-    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 1 });
+    expect(db.pragma('user_version', { simple: true })).toBe(12);
+    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').get()).toEqual({ n: 2 });
   } finally {
     reader.close();
     db.close();

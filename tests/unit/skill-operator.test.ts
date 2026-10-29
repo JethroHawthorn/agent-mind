@@ -101,7 +101,7 @@ it('migrates populated v6 transactionally, preserving existing versions and eval
   );
   migrate(f.db);
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
   expect(f.store.getVersion(version)).toEqual(before);
   expect(f.db.prepare('SELECT id FROM skill_evaluations WHERE id=?').get(evaluation)).toEqual({
     id: evaluation,
@@ -136,7 +136,7 @@ it('rolls migration v7 back after partial DDL and allows a safe retry', () => {
     f.db.prepare("SELECT name FROM sqlite_master WHERE name='skill_operator_events'").get(),
   ).toBeUndefined();
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
 });
 it('rejects source revocation after a passing evaluation before approval', () => {
   const f = fixture();

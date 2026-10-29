@@ -356,7 +356,12 @@ it('CLI apply returns actual readiness and ordinary doctor/status do not initial
   expect(dry.status, dry.stdout + dry.stderr).toBe(0);
   expect(existsSync(f.options.database)).toBe(false);
   const apply = run(f, ['setup', '--cli', 'all', '--apply']);
-  expect(apply.status, apply.stdout + apply.stderr).toBe(0);
+  expect(apply.status, apply.stdout + apply.stderr).toBe(2);
+  expect(JSON.parse(apply.stdout).providers).toContainEqual({
+    cli: 'antigravity',
+    status: 'SKIP',
+    reason: 'USER_SCOPE_REQUIRED',
+  });
   expect(JSON.parse(apply.stdout)).toMatchObject({
     ready: true,
     applied: true,

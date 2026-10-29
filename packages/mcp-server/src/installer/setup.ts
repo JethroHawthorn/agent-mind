@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { AgentMindError } from '@agentmind/core';
+import { AntigravitySetup } from '../antigravity/setup.js';
 import { runtimeDoctor } from './doctor.js';
 import { diagnostic, EXIT, type InstallPlan, type Provider } from './model.js';
 import { prepareRegistry, previewRegistry } from './registry.js';
@@ -15,6 +16,7 @@ function setupCode(error: unknown) {
 
 export function setupExit(error: unknown) {
   const code = setupCode(error);
+  if (code === 'ANTIGRAVITY_SCOPE_UNSUPPORTED') return EXIT.conflict;
   if (code === 'INSTALLER_INTERNAL') return EXIT.internal;
   if (/PERMISSION|PERMISSIONS|EACCES|EPERM|SQLITE_READONLY|SQLITE_PERM/.test(code))
     return EXIT.permission;
@@ -92,8 +94,26 @@ export async function completeSetup(
             id,
           ),
         );
+      } else if (id === 'antigravity' && service.context.scope === 'project') {
+        result.providers.push({ cli: id, status: 'SKIP', reason: 'USER_SCOPE_REQUIRED' });
+        checks.push(
+          diagnostic(
+            'antigravity.scope',
+            'WARNING',
+            'Antigravity requires explicit --cli antigravity --scope user. No global fallback was applied; its enrollment will remain project-bound.',
+            id,
+          ),
+        );
       } else selected.push(id);
     }
+    if (
+      !selected.length &&
+      result.providers.some((p) => p.cli === 'antigravity' && p.reason === 'USER_SCOPE_REQUIRED')
+    )
+      throw new AgentMindError(
+        'ANTIGRAVITY_SCOPE_UNSUPPORTED',
+        'Use explicit user scope; no registry or configuration was changed.',
+      );
     if (!selected.length)
       throw new AgentMindError('INSTALLER_DEPENDENCY_MISSING', 'No installed supported CLI.');
     stage = 'configuration-plan';
@@ -211,6 +231,27 @@ export async function completeSetup(
       checks.push(...health);
       if (health.some((check) => check.status !== 'PASS'))
         throw new AgentMindError('INSTALLER_MCP_HEALTH_FAILED', 'Installed MCP health failed.');
+    }
+    if (selected.includes('antigravity')) {
+      stage = 'antigravity-discovery';
+      const setup = new AntigravitySetup({
+        ...service.context,
+        adapter: service.context.adapters.antigravity,
+      });
+      const executable = service.adapters.antigravity.detect().executable;
+      if (!executable)
+        throw new AgentMindError('INSTALLER_DEPENDENCY_MISSING', 'Antigravity missing.');
+      setup.verifyDiscovery(executable);
+      checks.push(
+        diagnostic(
+          stage,
+          'PASS',
+          'Actual CLI configuration inventory contains the expected project-bound stdio entry. No model was invoked.',
+          'antigravity',
+        ),
+      );
+      stage = 'legacy-config-removal';
+      setup.finishMigration();
     }
     result.ready = true;
     result.exit_code = selected.length === requested.length ? EXIT.success : EXIT.incomplete;

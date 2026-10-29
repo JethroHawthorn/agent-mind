@@ -19,3 +19,9 @@ docs/reviews/*
 
 !docs/reviews/P6-005C_SETUP_IMPLEMENTATION.md
 !docs/reviews/P6-005C_EVIDENCE.json
+
+!docs/reviews/P6-005D_ANTIGRAVITY_INTEGRATION.md
+!docs/reviews/P6-005D_EVIDENCE.json
+
+!docs/reviews/P6-005D_1_REMEDIATION.md
+!docs/reviews/P6-005D_1_EVIDENCE.json

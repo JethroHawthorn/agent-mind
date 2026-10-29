@@ -1,4 +1,4 @@
-export const PROVIDERS = ['codex', 'claude', 'gemini'] as const;
+export const PROVIDERS = ['codex', 'claude', 'gemini', 'antigravity'] as const;
 export type Provider = (typeof PROVIDERS)[number];
 export type Action = 'setup' | 'repair' | 'update' | 'uninstall';
 export type CheckStatus = 'PASS' | 'FAIL' | 'WARNING' | 'NOT_VERIFIED' | 'NOT_APPLICABLE' | 'SKIP';
@@ -43,8 +43,9 @@ export type InstallPlan = {
   cli: Provider;
   scope: 'project' | 'user';
   action: Action;
-  disposition: 'INSTALL' | 'REPAIR' | 'UPDATE' | 'REMOVE' | 'SKIP' | 'CONFLICT';
+  disposition: 'INSTALL' | 'REPAIR' | 'UPDATE' | 'MIGRATE' | 'REMOVE' | 'SKIP' | 'CONFLICT';
   operations: FileOperation[];
+  post_health_operations?: FileOperation[];
   preconditions_digest: string;
   journal_paths: string[];
   native_operations: {
@@ -63,6 +64,8 @@ export type InstallPlan = {
 export type Inspection = {
   cli: Provider;
   detection: Detection;
+  config_path: string;
+  registry_path: string;
   state:
     | 'NOT_INSTALLED'
     | 'DETECTED'
@@ -70,7 +73,8 @@ export type Inspection = {
     | 'CONFIGURED'
     | 'CONFIG_ERROR'
     | 'POLICY_BLOCKED'
-    | 'UNSUPPORTED_VERSION';
+    | 'UNSUPPORTED_VERSION'
+    | 'UNSUPPORTED_SCOPE';
   scope: 'project' | 'user';
   managed: boolean;
   router:
