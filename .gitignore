@@ -8,5 +8,6 @@ coverage/
 *.db-wal
 .env
 .env.*
-docs/
+docs/*
+!docs/v1/
 native/bin/

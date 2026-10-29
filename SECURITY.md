@@ -8,6 +8,6 @@ Behavioral evaluation is refusal-only unless the existing policy can verify isol
 
 Use project-scoped trusted startup configuration. Treat memories, skills, diffs and tool output as untrusted reference data. Retrieval does not prove application or a verified outcome. Secret detection/redaction is heuristic; never deliberately send credentials or transcripts. Display redaction does not erase stored legacy records, indexes, backups or already-loaded model context. Whole-registry backups contain all projects and are not encrypted by AgentMind.
 
-For operational guidance, retention, incident response and known limitations see [Privacy and security operations](docs/PRIVACY_SECURITY.md), the existing SEC-01 deployment guide, and [P5-005 implementation evidence](docs/reviews/P5-005_IMPLEMENTATION.md).
+For operational guidance, retention, incident response and known limitations see [Privacy and security operations](docs/v1/SECURITY.md) and [release profile limitations](docs/v1/INSTALLATION.md).
 
 Report suspected vulnerabilities privately to the repository owner through an established private channel. No dedicated monitored security email or response-time commitment is configured. Share a minimal disposable reproduction, affected revision and enforcement layer; redact credentials, private memories and paths. Avoid public reports containing real sensitive data. Do not test against other users' databases, credentials or live protected deployments without authorization.

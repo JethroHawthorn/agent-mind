@@ -51,7 +51,10 @@
     "acceptance": "pnpm build && node scripts/acceptance.mjs",
     "test:acceptance": "pnpm build && vitest run tests/unit/acceptance-harness.test.ts tests/acceptance/release-workflow.test.ts --maxWorkers=2",
     "architecture:check": "pnpm build && node scripts/architecture.mjs",
-    "test:architecture": "pnpm build && vitest run tests/unit/architecture.test.ts tests/integration/architecture-boundary.test.ts --maxWorkers=2"
+    "test:architecture": "pnpm build && vitest run tests/unit/architecture.test.ts tests/integration/architecture-boundary.test.ts --maxWorkers=2",
+    "docs:check": "node scripts/docs-check.mjs",
+    "release:plan": "node scripts/release.mjs plan",
+    "test:release": "pnpm build && vitest run tests/integration/release-readiness.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/unit/database-reliability.test.ts tests/integration/database-cli.test.ts --maxWorkers=2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
