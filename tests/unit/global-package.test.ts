@@ -7,6 +7,8 @@ import { packageCLI } from '../../scripts/package-cli.mjs';
 it('packages existing compiled handlers with closed relative imports, runtime assets and an executable npm bin', () => {
   const runtime = packageCLI();
   const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
+  expect(manifest.name).toBe('@jethrohawthorn/agentmind');
+  expect(JSON.parse(readFileSync(join(runtime, 'package.json'), 'utf8')).name).toBe(manifest.name);
   const entry = resolve(manifest.bin.agentmind);
   expect(existsSync(entry)).toBe(true);
   expect(readFileSync(entry, 'utf8').startsWith('#!/usr/bin/env node\n')).toBe(true);

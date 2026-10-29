@@ -1,16 +1,16 @@
 # Installation and profiles
 
-The global executable is packaged from the existing CLI. This is an unpublished local candidate, version 1.0.0, not an approved V1 release. Users receiving a reviewed `agentmind-1.0.0.tgz` can install it with npm; no source checkout or pnpm is needed at runtime.
+The npm package is `@jethrohawthorn/agentmind`, and its global executable is `agentmind`. Install it with npm; no source checkout or pnpm is needed at runtime.
 
 ```sh
-npm install --global ./agentmind-1.0.0.tgz
+npm install --global @jethrohawthorn/agentmind
 agentmind --help
 agentmind --version
 ```
 
-For isolated prefix installation, use `npm install --global --prefix /tmp/agentmind-prefix ./agentmind-1.0.0.tgz` and invoke `/tmp/agentmind-prefix/bin/agentmind`. The installation test uses a fresh temporary prefix/cache/HOME and installs dependencies through npm. This is developer-host artifact evidence, **not clean-machine certification**.
+For a reviewed local version 1.0.0 artifact, use `npm install --global ./jethrohawthorn-agentmind-1.0.0.tgz`. For isolated prefix installation, use `npm install --global --prefix /tmp/agentmind-prefix ./jethrohawthorn-agentmind-1.0.0.tgz` and invoke `/tmp/agentmind-prefix/bin/agentmind`. The installation test uses a fresh temporary prefix/cache/HOME and installs dependencies through npm. This is developer-host artifact evidence, **not clean-machine certification**.
 
-No public registry release is supplied. `agentmind` is the actual package name; registry availability/ownership is unverified. Direct GitHub installation is excluded: the private source monorepo requires development dependencies and a build, and has no supported Git preparation contract. Maintainers prepare the npm artifact as described in [maintainer guidance](MAINTAINERS.md).
+Direct GitHub installation is excluded: the private source monorepo requires development dependencies and a build, and has no supported Git preparation contract. Maintainers prepare the npm artifact as described in [maintainer guidance](MAINTAINERS.md).
 
 Keep the installed prefix and Node executable available: managed enrollments pin their absolute paths. After moving/replacing either, inspect `agentmind update --dry-run` before applying compatible managed changes. Global npm installation never enrolls a project; only explicit setup changes integration configuration. SQLite's dependency install may download/compile its native binding.
 

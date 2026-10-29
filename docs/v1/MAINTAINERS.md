@@ -43,7 +43,7 @@ Clean-host installation and independent architecture/security review remain requ
 
 ## Global npm CLI artifact
 
-The root `agentmind` package is the distribution wrapper. Command ownership remains `packages/mcp-server/src/agentmind.ts`; there is no second CLI package. Root `bin` targets `dist/runtime/packages/mcp-server/dist/agentmind.js`.
+The root `@jethrohawthorn/agentmind` package is the distribution wrapper and exposes the `agentmind` command. Command ownership remains `packages/mcp-server/src/agentmind.ts`; there is no second CLI package. Root `bin` targets `dist/runtime/packages/mcp-server/dist/agentmind.js`. For version 1.0.0, `npm pack` produces `jethrohawthorn-agentmind-1.0.0.tgz`.
 
 ```sh
 mkdir -p dist/artifacts

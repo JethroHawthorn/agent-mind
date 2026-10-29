@@ -22,7 +22,7 @@ it.skipIf(!prefix)(
     try {
       const bin = join(prefix as string, 'bin/agentmind');
       const entry = realpathSync(bin);
-      expect(entry.startsWith(`${prefix}/lib/node_modules/agentmind/`)).toBe(true);
+      expect(entry.startsWith(`${prefix}/lib/node_modules/@jethrohawthorn/agentmind/`)).toBe(true);
       expect(readFileSync(entry, 'utf8').startsWith('#!/usr/bin/env node\n')).toBe(true);
       expect(statSync(entry).mode & 0o111).not.toBe(0);
       const runtime = resolve(dirname(entry), '../../..');

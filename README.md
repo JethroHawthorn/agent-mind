@@ -5,7 +5,7 @@ AgentMind gives OpenAI Codex CLI, Anthropic Claude Code and Google Gemini CLI pe
 Once published to npm, install AgentMind globally and connect your project:
 
 ```sh
-npm install --global agentmind
+npm install --global @jethrohawthorn/agentmind
 cd my-project
 agentmind setup --cli all --dry-run
 agentmind setup --cli all --apply
@@ -29,10 +29,10 @@ Coding agents lose context between sessions, so useful solutions get rediscovere
 
 ## Installation
 
-Install the `agentmind` npm package globally:
+Install the `@jethrohawthorn/agentmind` npm package globally:
 
 ```sh
-npm install --global agentmind
+npm install --global @jethrohawthorn/agentmind
 agentmind --help
 agentmind --version
 ```
