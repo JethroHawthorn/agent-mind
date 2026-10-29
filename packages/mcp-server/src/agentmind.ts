@@ -41,12 +41,19 @@ Usage: agentmind setup|status|doctor|repair|update|uninstall [options]
 Status/ordinary doctor never authenticate or invoke models. Optional hooks are preserved,
 not installed. Setup is not skill approval; autonomous promotion/distribution remain disabled.
 No AGENTS.md/CLAUDE.md/GEMINI.md changes. Uninstall retains memories, registry and backups.
-Legacy commands: pnpm codex|claude|gemini setup|status|doctor|uninstall ...
+  --version                    Installed AgentMind package version
 Exit: 0 success, 2 warnings/incomplete, 3 conflict, 4 arguments, 5 dependency,
       6 permission, 7 verification failure, 1 unexpected internal failure.
 `;
 async function main() {
   process.umask(0o077);
+  if (process.argv.length === 3 && process.argv[2] === '--version') {
+    const metadata = JSON.parse(
+      readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'),
+    ) as { version: string };
+    process.stdout.write(`${metadata.version}\n`);
+    return;
+  }
   if (process.argv[2] === 'db') {
     await runDatabaseCLI(process.argv.slice(3));
     return;

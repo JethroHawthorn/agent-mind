@@ -1,7 +1,6 @@
 {
   "name": "agentmind",
-  "version": "0.0.1",
-  "private": true,
+  "version": "1.0.0",
   "type": "module",
   "packageManager": "pnpm@11.6.0",
   "engines": {
@@ -56,15 +55,44 @@
     "release:plan": "node scripts/release.mjs plan",
     "test:release": "pnpm build && vitest run tests/integration/release-readiness.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/unit/database-reliability.test.ts tests/integration/database-cli.test.ts --maxWorkers=2",
     "test:rc": "pnpm build && vitest run tests/unit/rc-validation.test.ts --maxWorkers=1",
-    "test:final-release": "pnpm build && vitest run tests/unit/release-final.test.ts --maxWorkers=1"
+    "test:final-release": "pnpm build && vitest run tests/unit/release-final.test.ts --maxWorkers=1",
+    "build:cli": "node scripts/package-cli.mjs --build",
+    "prepack": "npm run build:cli",
+    "test:global-cli": "node scripts/verify-global-cli.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
-    "better-sqlite3": "^12.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.20.0",
     "typescript": "~5.9.3",
-    "vitest": "^4.1.0",
-    "@modelcontextprotocol/sdk": "^1.27.1"
+    "vitest": "^4.1.0"
+  },
+  "description": "Persistent memory and reusable skills for coding agents",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JethroHawthorn/agent-mind.git"
+  },
+  "keywords": [
+    "cli",
+    "mcp",
+    "memory",
+    "codex",
+    "claude",
+    "gemini"
+  ],
+  "bin": {
+    "agentmind": "./dist/runtime/packages/mcp-server/dist/agentmind.js"
+  },
+  "files": [
+    "dist/runtime/",
+    "README.md",
+    "SECURITY.md"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "better-sqlite3": "^12.0.0",
+    "zod": "^4.3.0",
+    "yaml": "^2.8.1"
   }
 }

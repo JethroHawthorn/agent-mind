@@ -165,7 +165,10 @@ it('extracts RC, builds both packages without repo dist, and executes documented
     timeout: 10000,
   });
   expect(extraction.status, extraction.stderr).toBe(0);
-  const artifact = join(root, 'agentmind-0.0.1');
+  const artifact = join(
+    root,
+    `agentmind-${JSON.parse(readFileSync('package.json', 'utf8')).version}`,
+  );
   expect(existsSync(join(artifact, 'packages/core/dist'))).toBe(false);
   const manifest = JSON.parse(readFileSync(join(artifact, 'RELEASE-MANIFEST.json'), 'utf8'));
   for (const row of manifest.files) {

@@ -29,7 +29,7 @@ export const DAILY_DOMAINS = [
   'activity',
 ];
 export const dailyHelp = `AgentMind daily workflow — local project scope, no model calls
-Usage: pnpm agentmind <group> <action> [full UUID/query] [options]
+Usage: agentmind <group> <action> [full UUID/query] [options]
  memory     list | search QUERY | show ID
  experience list | search QUERY | show ID
  skills     list | search QUERY | show ID | versions ID | diff ID --from UUID --to UUID

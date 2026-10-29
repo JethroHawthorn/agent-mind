@@ -33,7 +33,7 @@ it('verifies complete generated archive and copied snapshot source identity befo
   try {
     const output = join(root, 'extract'),
       source = extractVerified(v, output);
-    expect(source).toBe(join(output, 'agentmind-0.0.1'));
+    expect(source).toBe(join(output, `agentmind-${a.plan.version}`));
     expect(() => extractVerified(v, output)).toThrow();
   } finally {
     rmSync(root, { recursive: true, force: true });

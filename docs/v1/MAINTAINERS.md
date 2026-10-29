@@ -1,6 +1,6 @@
 # Maintainers: candidate preparation and verification
 
-The release strategy is a **source workspace RC**, preserving the two private workspace packages, pinned pnpm lock, TypeScript build and existing relative router/adapter paths. It is not an npm publishable bundle, standalone binary or preinstalled dependency image. Package version 0.0.1 is not a released semver promise. No license grant is present: resolve licensing/public distribution authorization before any external release.
+The release strategy is a **source workspace RC**, preserving the two private workspace packages, pinned pnpm lock, TypeScript build and existing relative router/adapter paths. It is not an npm publishable bundle, standalone binary or preinstalled dependency image. Package version 1.0.0 is not a released semver promise. No license grant is present: resolve licensing/public distribution authorization before any external release.
 
 ## Local preparation
 
@@ -40,3 +40,21 @@ The architecture is shared scoped core → canonical SQLite/immutable packages w
 ## Blocker handoff
 
 P6-001 E01 clean-host installation stays open for P6-004. P6-002 independent architecture/security review remains open (no independent P6-002 report was supplied). Native N01, OS S01 and sandbox S02 remain profile gates. Broker test socket EPERM remains an execution gap. Forty-two missing formal MCP output schemas and other inherited review dispositions are not closed by documentation. No license grant/public distribution approval and absence of a fresh dependency-advisory assessment remain release preparation risks. P6-004 receives checksummed artifacts, source identity, exact fresh command outcomes, fixture-vs-native classification and unresolved gate list; no tag/publication is authorized.
+
+## Global npm CLI artifact (P6-005B)
+
+The root `agentmind` package is the distribution wrapper. Command ownership remains `packages/mcp-server/src/agentmind.ts`; there is no second CLI package. Root `bin` targets `dist/runtime/packages/mcp-server/dist/agentmind.js`.
+
+```sh
+mkdir -p dist/artifacts
+npm pack --pack-destination dist/artifacts
+node scripts/verify-global-cli.mjs
+```
+
+`prepack` uses the existing TypeScript configurations, copies compiled JavaScript and the router to an allowlisted runtime tree, and rewrites only internal `@agentmind/core` module specifiers to package-relative imports. Both workspace directory layouts are retained for adapters, curator workers and asset resolution. Detailed documentation remains in the repository; the selected npm files list includes the runtime, README and SECURITY policy. SQLite migrations and schemas are compiled modules. No source maps, TypeScript sources, databases, credentials, native binaries or workspace node_modules enter the package. External dependencies install normally through npm; no `workspace:*` runtime dependency remains. No new bundler or separately published core package is needed.
+
+`npm pack` builds locally and does not publish. `npm install` has no AgentMind lifecycle script; dependency scripts may install the SQLite binding. There is no runtime pnpm dependency. The root metadata is 1.0.0 with `UNLICENSED`, as selected for this packaging change; this does not approve publication. Workspace implementation packages retain their existing private 0.0.1 metadata and are not separately distributed. Repository metadata comes from the existing Git remote. No registry name claim or V1 approval is implied.
+
+The explicit installation smoke uses a disposable npm prefix/cache/HOME, followed by the installed executable with a PATH containing Node and provider executable doubles only. It exercises all three installed MCP adapters, memory/FTS, configuration, read-only views and data-preserving removal. It retains its temporary evidence directory. It needs network/native-build access for a fresh dependency installation; it never uses developer dependency symlinks in the installed runtime. This is not clean-OS/native-model certification.
+
+Artifact identity includes the npm pack file manifest and a separately recorded SHA-256 in the P6-005B implementation evidence. The changed executable, imports, package assets, metadata and README invalidate previous RC certification for those paths. Rebuild and independently review the exact new artifact, then repeat clean supported-host installation, native provider acceptance, upgrade/recovery and relevant security/profile tests before publication. Existing P6-001 through P6-005 blockers remain open.

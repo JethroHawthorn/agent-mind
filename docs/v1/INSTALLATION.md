@@ -1,6 +1,18 @@
 # Installation and profiles
 
-Primary workflow: obtain an independently reviewed source snapshot or local `agentmind-0.0.1` source archive, inspect its checksum using a trusted separately supplied value, extract into a new directory, then run `pnpm install --frozen-lockfile` and `pnpm build`. Package preparation does not publish or install anything. Keep the source directory available: managed commands reference its compiled adapters and current Node executable. Moving it requires a reviewed managed `update` plan.
+The global executable is packaged from the existing CLI. This is an unpublished local candidate, version 1.0.0, not an approved V1 release. Users receiving a reviewed `agentmind-1.0.0.tgz` can install it with npm; no source checkout or pnpm is needed at runtime.
+
+```sh
+npm install --global ./agentmind-1.0.0.tgz
+agentmind --help
+agentmind --version
+```
+
+For isolated prefix installation, use `npm install --global --prefix /tmp/agentmind-prefix ./agentmind-1.0.0.tgz` and invoke `/tmp/agentmind-prefix/bin/agentmind`. The installation test uses a fresh temporary prefix/cache/HOME and installs dependencies through npm. This is developer-host artifact evidence, **not clean-machine certification**.
+
+No public registry release is supplied. `agentmind` is the actual package name; registry availability/ownership is unverified. Direct GitHub installation is excluded: the private source monorepo requires development dependencies and a build, and has no supported Git preparation contract. Maintainers prepare the npm artifact as described in [maintainer guidance](MAINTAINERS.md).
+
+Keep the installed prefix and Node executable available: managed enrollments pin their absolute paths. After moving/replacing either, inspect `agentmind update --dry-run` before applying compatible managed changes. Global npm installation never enrolls a project; only explicit setup changes integration configuration. SQLite's dependency install may download/compile its native binding.
 
 ## Prerequisites and platforms
 
@@ -8,7 +20,7 @@ Primary workflow: obtain an independently reviewed source snapshot or local `age
 | --- | --- | --- |
 | OS/CPU | macOS arm64 prioritized | Development host and disposable fixtures; clean machine NOT VERIFIED |
 | Node | Declared >=22.13.0 | Node 22.13.1 tested; later Node ABI support NOT VERIFIED |
-| pnpm | 11.6.0, declared packageManager | Current workspace commands tested |
+| pnpm | 11.6.0 for contributors only | Not required by installed runtime |
 | SQLite | better-sqlite3 as pinned by lock; FTS5 | Native module/FTS5 tested on current host; no binary in source archive |
 | Build tools | Python and C/C++ toolchain if native prebuilt unavailable | Native install may download a prebuilt or compile; no clean-host install claim |
 | Native CLIs | Optional Codex/Claude/Gemini official executables | Adapter fixtures use public version/help contracts, not model authentication |
@@ -16,11 +28,11 @@ Primary workflow: obtain an independently reviewed source snapshot or local `age
 | Protected operator | Distinct runner/operator/service authority, protected parents/WAL/SHM and peer-authenticated broker | NOT VERIFIED; not provisioned by setup |
 | Behavioral sandbox | Qualified independently verified backend | No accepted executable backend; behavioral execution refused |
 
-Disk/memory minima are not established. Packaging reports source/archive size; native dependency installation needs additional cache/build space. FTS5 is checked by actual runtime health/doctor, not inferred from SQLite being installed. Dependencies are locked but vulnerability intelligence and binary provenance remain separate checks.
+Disk/memory minima are not established. Packaging reports source/archive size; native dependency installation needs additional cache/build space. FTS5 is checked by actual runtime health/doctor, not inferred from SQLite being installed. Changing Node major versions requires reinstalling/rebuilding native dependencies for that ABI and reviewing pinned enrollment paths. Reusing a Node 22 SQLite binding under Node 26 fails with an ABI mismatch; this is not a verified Node 26 installation. Dependencies are locked in the contributor workspace, but a fresh npm artifact install resolves the declared production ranges. Vulnerability intelligence and binary provenance remain separate checks.
 
 ## Install and inspect
 
-Follow [quick start](QUICK_START.md). The built primary command is `node /absolute/source/packages/mcp-server/dist/agentmind.js`. The source alias `pnpm agentmind` works only in that workspace. No global bin or npm release is supplied.
+Use `agentmind` from the installed prefix inside your project. The source-only alias `pnpm agentmind` remains available to contributors. See the [quick start](QUICK_START.md) for detailed MCP examples; its explicit compiled paths are for source-workspace verification.
 
 Use `setup --cli PROVIDER --project-root ROOT --db ABSOLUTE_DB --dry-run --json`, launching inside the authorized root. A plan identifies operations, hashes, ownership/preconditions, backups and postconditions. Setup does not initialize SQLite. Status/ordinary doctor are read-only; `doctor --connect` explicitly starts enrolled MCP and **may initialize/migrate** SQLite. It is not an ordinary read-only diagnostic. Read [upgrade](UPGRADE.md) before starting new code on an old database.
 
@@ -55,3 +67,7 @@ Re-running setup on unchanged managed artifacts should SKIP. Edited/user-owned/f
 | E Full protected | All native/OS/sandbox/distribution/privacy gates | NOT VERIFIED, not supported for production release |
 
 No terminal prompt establishes OS identity separation. No `--unsafe` or weaker execution fallback is provided. Run status, ordinary doctor and database doctor; obtain separate authorized deployment/isolation/native evidence for advanced profiles. P6-004 clean-machine testing and independent review remain blockers for publication.
+
+## Optional native probes
+
+The npm runtime includes the existing opt-in native session harnesses and their helpers. They resolve runtime assets inside the installed package. They have not been run against authenticated providers here. Protected native peer binaries are excluded; deployment requires a separately built and verified helper. Ordinary doctor and explicit `doctor --connect` use the installed adapters. Protected deployment must supply its own verified runtime; global installation grants no operator authority.

@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { Provider } from './model.js';
 /** Reuse marked-disposable native harnesses; explicit model opt-in only. Never reflect raw output. */
 export async function nativeDoctor(id: Provider, script: string, timeoutMs = 45000) {
@@ -10,7 +11,7 @@ export async function nativeDoctor(id: Provider, script: string, timeoutMs = 450
       process.execPath,
       [script, '--probe', '--scenario', 'A', '--native-timeout-seconds', '30'],
       {
-        cwd: process.cwd(),
+        cwd: dirname(dirname(script)),
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: process.platform !== 'win32',
       },

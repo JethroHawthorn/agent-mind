@@ -1,0 +1,451 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "artifact": "/Users/jethro/Desktop/WorkSpace/personal/agent-mind/dist/artifacts/agentmind-1.0.0.tgz",
+    "sha256": "89e505aa03177c2e8cf1547b1ded8f5d7f8036b0c4720cca84d1d35261df5f1e",
+    "bytes": 251851,
+    "unpacked_bytes": 1060315,
+    "environment": {
+      "node": "v22.13.1",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "npm_integrity": "sha512-cUENMXkwysvbUeWqUDsAi/1vb/B7YRPUQtWmAZ8grajjyaP7aFmPPFZcTKWTy3FAZX3wbioRQFcLmsXlTMdTNA=="
+  },
+  "artifact_manifest": "dist/artifacts/agentmind-1.0.0.manifest.json",
+  "retained_installation": "/private/var/folders/0d/jyw7f9s96kq4bx_0291cd3m40000gn/T/agentmind-global-e2aU0O",
+  "additional_v1_installation": "/private/var/folders/0d/jyw7f9s96kq4bx_0291cd3m40000gn/T/agentmind-global-8iu601",
+  "source_metadata_conflict": {
+    "observed_at_local": "2026-10-29 14:40:52 +07:00",
+    "original": {
+      "version": "0.0.1",
+      "private": true,
+      "files_include_docs_v1": true
+    },
+    "outside_edit_preserved": {
+      "version": "1.0.0",
+      "private": false,
+      "files_include_docs_v1": false
+    },
+    "clarification": "RESOLVED: user explicitly selected Include the new 1.0.0 metadata",
+    "impact": "Root1.0.0 metadata retained; README/install guide updated, version-dependent source-archive tests derive current metadata. No publication authorized."
+  },
+  "commands": [
+    {
+      "command": "pnpm install --lockfile-only --offline",
+      "exit": 0
+    },
+    {
+      "command": "pnpm lint",
+      "exit": 0,
+      "note": "Existing useTemplate informational finding in tests/unit/learning-review.test.ts; no errors/warnings."
+    },
+    {
+      "command": "pnpm typecheck",
+      "exit": 0
+    },
+    {
+      "command": "pnpm build",
+      "exit": 0
+    },
+    {
+      "command": "pnpm test",
+      "exit": 1,
+      "tests": {
+        "passed": 1284,
+        "failed": 11,
+        "skipped": 1
+      },
+      "note": "Six restricted broker sockets; initial lock digest mismatch; installer and timing failures."
+    },
+    {
+      "command": "pnpm exec vitest run tests/unit/installer.test.ts tests/unit/gemini-setup.test.ts tests/integration/release-readiness.test.ts tests/integration/daily-workflow.test.ts tests/unit/architecture.test.ts --maxWorkers=2",
+      "exit": 0,
+      "tests": {
+        "passed": 81
+      }
+    },
+    {
+      "command": "pnpm test -- --maxWorkers=2",
+      "exit": 1,
+      "tests": {
+        "passed": 1287,
+        "failed": 9,
+        "skipped": 1
+      },
+      "note": "Double separator does not constrain workers as intended. Six broker sockets, two timing failures and one learning E2E failure. Retained, not represented as a controlled run."
+    },
+    {
+      "command": "pnpm test:security",
+      "exit": 0,
+      "tests": {
+        "passed": 151
+      },
+      "note": "Final after recording intentional lockfile digest change."
+    },
+    {
+      "command": "pnpm architecture:check",
+      "exit": 0
+    },
+    {
+      "command": "pnpm smoke",
+      "exit": 0
+    },
+    {
+      "command": "pnpm docs:check",
+      "exit": 0,
+      "files": 15,
+      "local_links": 47,
+      "shell_blocks": 20,
+      "json_blocks": 2,
+      "errors": 0
+    },
+    {
+      "command": "pnpm acceptance",
+      "exit": 1,
+      "scenarios": {
+        "pass": 34,
+        "fail": 0,
+        "not_verified": 8
+      },
+      "note": "Two repetitions; overall release gate J FAIL; no full V1 certification."
+    },
+    {
+      "command": "pnpm acceptance --repeat 1",
+      "exit": 1,
+      "scenarios": {
+        "pass": 17,
+        "fail": 0,
+        "not_verified": 8
+      },
+      "note": "Offline functional PASS; overall release gate J FAIL remains."
+    },
+    {
+      "command": "node scripts/verify-global-cli.mjs",
+      "exit": 0,
+      "note": "Fresh npm cache/prefix/HOME, actual runtime dependencies; retained private0.0.1 artifact installed and tested. Initial sandbox DNS failure was retried with network approval."
+    },
+    {
+      "command": "AGENTMIND_GLOBAL_PREFIX=<retained-prefix> pnpm exec vitest run tests/integration/global-cli.test.ts --maxWorkers=1",
+      "exit": 0,
+      "note": "Exact generated Codex/Claude/Gemini MCP commands launched; additional final PATH-based check recorded separately."
+    },
+    {
+      "command": "AGENTMIND_GLOBAL_PREFIX=<v1-prefix> pnpm exec vitest run tests/integration/global-cli.test.ts --maxWorkers=1",
+      "exit": 0,
+      "note": "Outside metadata1.0.0 variant runtime works; metadata consistency is not certified."
+    },
+    {
+      "command": "pnpm exec vitest run tests/unit/global-package.test.ts --maxWorkers=1",
+      "exit": 0,
+      "tests": {
+        "passed": 1
+      }
+    },
+    {
+      "command": "node scripts/package-evidence.mjs dist/artifacts/pack-0.0.1.json dist/artifacts/agentmind-0.0.1.tgz",
+      "exit": 0,
+      "files": 185
+    },
+    {
+      "command": "pnpm exec vitest run tests/unit/rc-validation.test.ts tests/unit/release-final.test.ts tests/integration/release-readiness.test.ts tests/unit/global-package.test.ts --maxWorkers=2",
+      "exit": 0,
+      "tests": {
+        "passed": 30
+      },
+      "note": "Approved 1.0.0 metadata; dynamic version expectations, original NO-GO assertions retained."
+    },
+    {
+      "command": "node scripts/verify-global-cli.mjs",
+      "exit": 0,
+      "note": "FINAL1.0.0 fresh npm installation; no config side effects; PATH-based executable; three exact generated provider configurations/actual MCP SQLite memory/FTS; exit codes, views, uninstall retention."
+    },
+    {
+      "command": "node scripts/package-evidence.mjs dist/artifacts/pack-1.0.0.json dist/artifacts/agentmind-1.0.0.tgz",
+      "exit": 0,
+      "files": 173
+    },
+    {
+      "command": "pnpm test:security",
+      "exit": 0,
+      "tests": {
+        "passed": 151
+      },
+      "note": "Final approved1.0.0 source."
+    },
+    {
+      "command": "pnpm exec vitest run --maxWorkers=2",
+      "exit": 1,
+      "tests": {
+        "passed": 1286,
+        "failed": 10,
+        "skipped": 1
+      },
+      "note": "PRE reconciliation: six broker sandbox errors plus four hardcoded0.0.1 archive tests. All four version-dependent failures subsequently pass in the30-test targeted rerun."
+    },
+    {
+      "command": "pnpm exec vitest run --maxWorkers=2",
+      "exit": 1,
+      "tests": {
+        "passed": 1290,
+        "failed": 6,
+        "skipped": 1
+      },
+      "note": "FINAL1.0.0 full suite. All6 failures are restricted-host Unix socket errno1 in broker-native. Opt-in installation suite passed separately."
+    },
+    {
+      "command": "pnpm exec vitest run tests/integration/broker-native.test.ts --maxWorkers=1",
+      "exit": 0,
+      "sandbox_permissions": "require_escalated",
+      "tests": {
+        "passed": 10
+      },
+      "note": "Approved retry outside sandbox; all actual Unix-socket broker tests pass. No protected OS deployment assurance inferred."
+    }
+  ],
+  "logs": [
+    {
+      "command_log": "dist/artifacts/validation/tests.log",
+      "sha256": "f7ebb08d77839ff08bb38fe6de21b2b84b22efd1c552cf1355e69cdeaa0b63e2",
+      "bytes": 7024,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/security.log",
+      "sha256": "f5a117c6daa3294843d8055c64eac5f66c8009269c81536f1274478db1473971",
+      "bytes": 1817,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/retest.log",
+      "sha256": "72bdab72814f324ebb0bd2c9248cbbf95c5c5efb93f5b0a4840193d34c2b5d79",
+      "bytes": 240,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/global-retest.log",
+      "sha256": "fbc7706fda023bcfb75f05b4b0743b2ea0dd067f4097374033a64e99ae14dbc8",
+      "bytes": 238,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/final-tests.log",
+      "sha256": "a818e918fa7ae04aa92ba7e360dbbac1d2a231b230e147b51bcea187f4354041",
+      "bytes": 5215,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/final-security.log",
+      "sha256": "0100656379e486a6cc5a79f6e4472dd0f6022b7fcf47759a60b380a3a330dae7",
+      "bytes": 843,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/architecture.log",
+      "sha256": "a03320d67a4649a0a79fc8f4835c505522a39fd237e36e374c5635c06eed18a3",
+      "bytes": 197148,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/lint.log",
+      "sha256": "15bea76265761e06a6a4b5306ec7c6e1ebe5134fd8e0d65984c8119d52be476b",
+      "bytes": 1309,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/typecheck.log",
+      "sha256": "b2e92930f4432b7a5ec6e2af13cd0e0c527d579c374a889fd79e2aeff32e886e",
+      "bytes": 38,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/docs.log",
+      "sha256": "6ecfc71129f8c15cbd7bb4f83914b7ccb898b7dbe6699264a0449ef576634eac",
+      "bytes": 327,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/package-test.log",
+      "sha256": "c8ad8daedf8351cf29b28451be0da688b21ff9577312f8344afe15e2ddddf11b",
+      "bytes": 235,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/final-acceptance.log",
+      "sha256": "c9d743de8010c9c8a7469146290228831c16f22606e798893401e30137d62a06",
+      "bytes": 2628,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/config-launch.log",
+      "sha256": "49815073a26f0490f852200626209f6d12ac5857ad90cbb3043fd241c3753864",
+      "bytes": 238,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/v1-runtime.log",
+      "sha256": "f95c5f393c7846757150b3f527187674607f62a6a81a4b07f6254649a03b6a89",
+      "bytes": 238,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/version-tests.log",
+      "sha256": "28b027f8e0c39d469af5df6d77951daa974868a57126d6f281aa1c563c75dc90",
+      "bytes": 240,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/v1-security.log",
+      "sha256": "2b408371eef73718f67010269a0acce0bb7dca179e19d6600979e2b08aa388e2",
+      "bytes": 841,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/retained-artifact.log",
+      "sha256": "2a59f5806ba0131983f8f4693b9818c3796f1a24d4a9034b9f536362d1e14439",
+      "bytes": 238,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/controlled-tests.log",
+      "sha256": "f582e815839c9fecf815b380307a4fa8a3fd78d608d2860a7fd2de0f99296033",
+      "bytes": 5957,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/v1-final-tests.log",
+      "sha256": "573d46a5cd8261822a3a5e2748969aae26c7fd246d69f8109060b890bb5f7281",
+      "bytes": 2236,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/broker-escalated.log",
+      "sha256": "3302b89439ea9332e12fe6f1b1b68d624916a1a33dba923d9c404cf8adc999ed",
+      "bytes": 238,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/final-docs.log",
+      "sha256": "6ecfc71129f8c15cbd7bb4f83914b7ccb898b7dbe6699264a0449ef576634eac",
+      "bytes": 327,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/final-lint.log",
+      "sha256": "bd18b4847d619f9ec28c8af3161501beb05a588ee455974e7eef9e6d9fff5220",
+      "bytes": 1309,
+      "complete": true
+    },
+    {
+      "command_log": "dist/artifacts/validation/final-typecheck.log",
+      "sha256": "b2e92930f4432b7a5ec6e2af13cd0e0c527d579c374a889fd79e2aeff32e886e",
+      "bytes": 38,
+      "complete": true
+    }
+  ],
+  "source_files": [
+    {
+      "path": ".gitignore",
+      "sha256": "9bc8868c3c43542b60b887c005edbc33806687aa895a81787f0522026b301dbf"
+    },
+    {
+      "path": "README.md",
+      "sha256": "12d29100bcf1b49da3c17e3aeba58e526d07d1d77ce37f2f9c2b9fb8900346f2"
+    },
+    {
+      "path": "contracts/v1.json",
+      "sha256": "fbb24b6a033ef01df390bc48cdbacea10d8d63e172ee9cb1c1da7e82801981b4"
+    },
+    {
+      "path": "docs/v1/INSTALLATION.md",
+      "sha256": "709cfa607b652725a9fc7a65bfc03690ce65612c0402d2c54483f4a96d628d86"
+    },
+    {
+      "path": "docs/v1/MAINTAINERS.md",
+      "sha256": "62054ec9c267e5b8441a11373742f6a016dd5d475a80a029aa701464a0b40470"
+    },
+    {
+      "path": "package.json",
+      "sha256": "64810c393fb7d68bfbc6865ec0de40d16c99203566e19740e0ba9a443b82a9c3"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "2bf5a6551a600d1f5955c695aef500d38d4c1f5ed91971238a37bdc0136e4567"
+    },
+    {
+      "path": "packages/mcp-server/src/agentmind.ts",
+      "sha256": "38ac44212635cb7e03437fb0ab39a3f407afca7cb4dbae55bd2e7702d4211cf4"
+    },
+    {
+      "path": "packages/mcp-server/src/daily/cli.ts",
+      "sha256": "3cddfa92b0ca0eea006f55ba4ac6bc3ea06ffe40122dbf8ab740644b58c867b1"
+    },
+    {
+      "path": "packages/mcp-server/src/installer/native.ts",
+      "sha256": "5883f8f405707a809fcf61ef39876a473b4a6771eb5c3ac894a795138c2b212d"
+    },
+    {
+      "path": "scripts/package-cli.mjs",
+      "sha256": "a59e5a2c733e79046ec717c5c5e5c130a272f8c7497c9bf838b99d606a5574ab"
+    },
+    {
+      "path": "scripts/package-evidence.mjs",
+      "sha256": "9e7f9f899daa134372c73300e59006756bd080802ff768d03b46e40b1a27f140"
+    },
+    {
+      "path": "scripts/verify-global-cli.mjs",
+      "sha256": "d7e2b2aa84a5d42c96cb1e64f75bd654570cf8627670d01df3961258963e4da3"
+    },
+    {
+      "path": "tests/unit/global-package.test.ts",
+      "sha256": "acead2c5c09a98fd2b180c9e1281774906897ff2ddda10ced477419057a9732d"
+    },
+    {
+      "path": "tests/integration/global-cli.test.ts",
+      "sha256": "3a5e790f66a5574adef284d2d57617a082adbd5aff46c0e1f187300a9b33071a"
+    },
+    {
+      "path": "tests/unit/rc-validation.test.ts",
+      "sha256": "d7677a47ccb0ab25ab86b7c8e6a70f566b6dfc47eb8f6e48605774995e621dd1"
+    },
+    {
+      "path": "tests/unit/release-final.test.ts",
+      "sha256": "ac9947ceefa4c51451d2b34a513bb1c91097905f18b0db7269e0ef640503bb23"
+    },
+    {
+      "path": "tests/integration/release-readiness.test.ts",
+      "sha256": "1aae8c425649716bc80afddc056ac8b7761844b04b0862068ff3f697aebde2c9"
+    }
+  ],
+  "publication": "NO-GO; no publish/commit/push/tag/release performed",
+  "recertification": "Previous candidate certification stale for changed CLI paths, packaging, dependencies and documentation",
+  "clean_os": "NOT VERIFIED",
+  "native_models": "NOT VERIFIED; provider doubles and actual installed MCP only",
+  "protected_os": "NOT VERIFIED",
+  "behavioral_sandbox": "NOT VERIFIED",
+  "final_installation": "/private/var/folders/0d/jyw7f9s96kq4bx_0291cd3m40000gn/T/agentmind-global-uV4fIk",
+  "sqlite": {
+    "node": "22.13.1",
+    "abi": 127,
+    "sqlite": "3.53.2",
+    "fts5_match_count": 1,
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "better-sqlite3": "12.11.1",
+    "zod": "4.6.7",
+    "yaml": "2.9.1",
+    "native_sha256": "1946ab352978b5b3493f99080dc04ed6d0a4157c511c7139cbf50b3d44d8d560",
+    "negative_abi_probe": "Node26.12.1 refused the Node22-built binding with ERR_DLOPEN_FAILED; reinstall/rebuild required after a major Node change, no clean Node26 installation claim."
+  },
+  "final_status": {
+    "global_cli": "PASS",
+    "installed_mcp_all3": "PASS at provider-double/actual SDK layer",
+    "fresh_npm_dependencies": "PASS on developer host",
+    "sqlite_fts5": "PASS Node22.13.1/darwin-arm64",
+    "full_restricted_suite": "FAIL6 sandbox socket errors,1290pass1skip",
+    "affected_unrestricted_broker_retry": "PASS10",
+    "security_suite": "PASS151",
+    "clean_machine": "NOT VERIFIED",
+    "publication": "NO-GO",
+    "root_version_decision": "User explicitly confirmed1.0.0 metadata"
+  }
+}

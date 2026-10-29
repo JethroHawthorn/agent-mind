@@ -13412,7 +13412,7 @@
     }
   ],
   "freeze": "v1-architecture-candidate",
-  "lockfile_sha256": "d4f0ce7adf196fd7fb713105b541e6fa281b29e2092d7625ab0d774eb8362a25",
+  "lockfile_sha256": "2bf5a6551a600d1f5955c695aef500d38d4c1f5ed91971238a37bdc0136e4567",
   "mcp": [
     {
       "annotations": {

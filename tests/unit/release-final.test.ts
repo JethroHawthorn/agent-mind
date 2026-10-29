@@ -22,7 +22,9 @@ it('keeps proposed V1 metadata distinct from unapproved current source artifact 
   const f = fixture(),
     r = releaseAssessment(f);
   expect(r.proposed_version).toBe('1.0.0');
-  expect(r.effective_package_version).toBe('0.0.1');
+  expect(r.effective_package_version).toBe(
+    JSON.parse(readFileSync('package.json', 'utf8')).version,
+  );
   expect(r.version_consistent_for_v1).toBe(false);
   expect(r.eligible_v1_artifact).toBeNull();
   expect(r.overall_decision).toBe('NO-GO');
@@ -109,5 +111,5 @@ it('source preparation packages changelog and unreleased governance documents wi
   const a = sourceArchive();
   expect(a.plan.files.some((f) => f.path === 'CHANGELOG.md')).toBe(true);
   expect(a.plan.files.some((f) => f.path === 'docs/v1/PUBLICATION.md')).toBe(true);
-  expect(a.plan.version).toBe('0.0.1');
+  expect(a.plan.version).toBe(JSON.parse(readFileSync('package.json', 'utf8')).version);
 });
