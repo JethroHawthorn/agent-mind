@@ -2,17 +2,17 @@
 
 AgentMind gives OpenAI Codex CLI, Anthropic Claude Code and Google Gemini CLI persistent project memory and reusable Agent Skills. Keep useful decisions and solutions across sessions, with local storage and human-supervised skill approval.
 
-Install the **unpublished local candidate** from a supplied, reviewed tarball:
+Once published to npm, install AgentMind globally and connect your project:
 
 ```sh
-npm install --global ./agentmind-1.0.0.tgz
+npm install --global agentmind
 cd my-project
 agentmind setup --cli all --dry-run
 agentmind setup --cli all --apply
 agentmind doctor
 ```
 
-Requires Node.js 22.13 or later and at least one supported coding-agent CLI. No pnpm is needed to use the installed package. See [installation](docs/v1/INSTALLATION.md) for the tested artifact workflow and platform limits. No public npm release is provided or approved yet.
+Requires Node.js 22.13 or later and at least one supported coding-agent CLI. No pnpm is needed to use the installed package. See [installation](docs/v1/INSTALLATION.md) for provider setup details and platform limits.
 
 ## Why AgentMind?
 
@@ -29,17 +29,15 @@ Coding agents lose context between sessions, so useful solutions get rediscovere
 
 ## Installation
 
-The package name in this repository is `agentmind`, version `1.0.0`. Registry installation is reserved for a future approved publication; package-name availability and registry ownership are not established here. Use the tested local tarball command above with the artifact supplied to you.
-
-For a disposable installation that leaves your normal global prefix alone:
+Install the `agentmind` npm package globally:
 
 ```sh
-npm install --global --prefix /tmp/agentmind-prefix ./agentmind-1.0.0.tgz
-/tmp/agentmind-prefix/bin/agentmind --help
-/tmp/agentmind-prefix/bin/agentmind --version
+npm install --global agentmind
+agentmind --help
+agentmind --version
 ```
 
-The SQLite dependency may download a native binary or need Python and a C/C++ build toolchain. macOS arm64 with Node 22.13.1 has local artifact evidence; other platforms and Node versions need verification. Windows is not an officially verified target. Direct GitHub installation is not supported; use a prepared tarball.
+The SQLite dependency may download a native binary or need Python and a C/C++ build toolchain. macOS arm64 with Node 22.13.1 has local artifact evidence; other platforms and Node versions need verification. Windows is not an officially verified target. Direct GitHub installation is not supported; use the npm package.
 
 ## Quick Start
 
