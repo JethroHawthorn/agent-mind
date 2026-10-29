@@ -20,7 +20,7 @@ export function integrationRegistry(root: string, explicit?: string, home = home
       }
     }
   }
-  if (!explicit && remembered.size > 1)
+  if (remembered.size > 1 || (explicit && [...remembered].some((path) => path !== explicit)))
     throw new AgentMindError(
       'INSTALLER_REGISTRY_CONFLICT',
       'Integration receipts disagree about registry location; inspect before repair.',

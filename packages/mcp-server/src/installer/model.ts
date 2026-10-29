@@ -1,7 +1,7 @@
 export const PROVIDERS = ['codex', 'claude', 'gemini'] as const;
 export type Provider = (typeof PROVIDERS)[number];
 export type Action = 'setup' | 'repair' | 'update' | 'uninstall';
-export type CheckStatus = 'PASS' | 'FAIL' | 'WARNING' | 'NOT_VERIFIED' | 'NOT_APPLICABLE';
+export type CheckStatus = 'PASS' | 'FAIL' | 'WARNING' | 'NOT_VERIFIED' | 'NOT_APPLICABLE' | 'SKIP';
 export type Diagnostic = {
   id: string;
   component: string;

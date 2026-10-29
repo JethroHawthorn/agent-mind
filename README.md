@@ -52,9 +52,11 @@ agentmind setup --cli all --apply
 agentmind doctor
 ```
 
-`--dry-run` previews managed configuration and router changes. `--apply` authorizes those changes. Setup targets detected installed CLIs and defaults to project scope. Restart your coding agent after setup. You do not need to edit MCP configuration by hand.
+`--dry-run` previews the registry and managed integration changes without writing them. `--apply` verifies the SQLite driver, creates a missing registry, checks schema and FTS5 indexes, configures the integrations, and starts each MCP adapter for a direct health check. Setup targets detected installed CLIs and defaults to project scope. Restart your coding agent after setup. You do not need to edit MCP configuration by hand.
 
-Ordinary doctor does not start MCP or invoke a model. It may exit with code 2 to report incomplete verification. Setup does not create a database; the first MCP startup initializes local storage. Read the [upgrade guide](docs/v1/UPGRADE.md) before starting a newer binary on an existing registry.
+You do not need the `sqlite3` command-line tool: AgentMind uses its declared Node.js SQLite dependency. Existing data is preserved. If an existing registry needs a schema migration, setup stops for the owner-approved migration workflow in the [upgrade guide](docs/v1/UPGRADE.md). It never resets the database or silently rebuilds indexes.
+
+Ordinary doctor does not start MCP or invoke a model. It may exit with code 2 for incomplete verification; setup also reports missing providers separately. Direct MCP health checks do not verify native model use.
 
 ## How It Works
 
@@ -68,7 +70,7 @@ Creating a proposal does not approve or activate it. Agent-facing tools and advi
 
 ## Common Commands
 
-Run knowledge commands after MCP has initialized the registry.
+Run knowledge commands after setup reports local readiness.
 
 | Task | Command |
 | --- | --- |

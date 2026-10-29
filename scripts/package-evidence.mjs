@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 const metadata = JSON.parse(readFileSync(process.argv[2], 'utf8'))[0];
 const archive = resolve(process.argv[3]);
@@ -56,10 +56,10 @@ const evidence = {
     'STALE for executable, runtime packaging, dependency layout and documentation; independent recertification required',
 };
 writeFileSync(
-  join('dist/artifacts', `${metadata.filename.replace(/\.tgz$/, '')}.manifest.json`),
+  join(dirname(archive), `${metadata.filename.replace(/\.tgz$/, '')}.manifest.json`),
   `${JSON.stringify(evidence, null, 2)}\n`,
 );
-writeFileSync(join('dist/artifacts', 'SHA256SUMS'), `${evidence.sha256}  ${metadata.filename}\n`);
+writeFileSync(join(dirname(archive), 'SHA256SUMS'), `${evidence.sha256}  ${metadata.filename}\n`);
 console.log(
   JSON.stringify({ sha256: evidence.sha256, files: files.length, bytes: evidence.bytes }),
 );

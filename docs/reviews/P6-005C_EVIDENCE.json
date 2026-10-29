@@ -1,0 +1,535 @@
+{
+  "schema_version": 1,
+  "milestone": "P6-005C",
+  "artifact": {
+    "artifact": "/Users/jethro/Desktop/WorkSpace/personal/agent-mind/dist/artifacts/p6-005c/agentmind-1.0.0.tgz",
+    "sha256": "807b0a67ce50d94fe0e7b035a7c032c6cd0c42269849572c8c788c8f9ba7200c",
+    "bytes": 257862,
+    "unpacked_bytes": 1080529,
+    "npm_integrity": "sha512-FSOexKFdgabZpcSRPj/u9cF8PAnY2EJPJ/MDU1kvRz/uO+s9Oegf/9UzygLw6j7OvO0QliiN3UUwdk1pYlf+NA==",
+    "environment": {
+      "node": "v22.13.1",
+      "platform": "darwin",
+      "arch": "arm64"
+    }
+  },
+  "artifact_manifest": "dist/artifacts/p6-005c/agentmind-1.0.0.manifest.json",
+  "checksum_sidecar": "dist/artifacts/p6-005c/SHA256SUMS",
+  "installed_prefix": "/private/var/folders/0d/jyw7f9s96kq4bx_0291cd3m40000gn/T/agentmind-global-tbBZI4/prefix/lib/node_modules/agentmind",
+  "dependency_versions": {
+    "better-sqlite3": "12.11.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7",
+    "yaml": "2.9.1"
+  },
+  "sqlite_binding_sha256": "1946ab352978b5b3493f99080dc04ed6d0a4157c511c7139cbf50b3d44d8d560",
+  "source_files": [
+    {
+      "path": ".gitignore",
+      "sha256": "87165633ff30f9c3b19a23102778780280574e81b3051a018e0fd1d9a1579050"
+    },
+    {
+      "path": "README.md",
+      "sha256": "4bd32afc9dd5ba7b589a38929d57e0d9721a994431b26d505aed472ceb5086f3"
+    },
+    {
+      "path": "contracts/README.md",
+      "sha256": "7287e5b07eeac3fc3d724804479c2dec90db3353476a01b865695858f5dfae37"
+    },
+    {
+      "path": "contracts/v1.json",
+      "sha256": "af9e5ef2435eda0f7d97b8922aec932e1301e8a47fb1bef745d43566cfef4b30"
+    },
+    {
+      "path": "docs/reviews/P6-005C_SETUP_IMPLEMENTATION.md",
+      "sha256": "8456341c5a9faf8287283389f0f987926e1f5c2ecff320f538b417f6d3f0b996"
+    },
+    {
+      "path": "docs/v1/INSTALLATION.md",
+      "sha256": "a44377ba4aa7061ccc316c969d472a45a674961d2bb9edc36b6aad2fd8a3cbbd"
+    },
+    {
+      "path": "docs/v1/QUICK_START.md",
+      "sha256": "f5f41e38a3b3f7260d571b4d54718713c080a8a26a2965a3d7bac19078fe9a72"
+    },
+    {
+      "path": "docs/v1/TROUBLESHOOTING.md",
+      "sha256": "c9bcbd5b429f75fb41085bbf6f628b1f6d21086bde982088a9421b6b7376ea06"
+    },
+    {
+      "path": "packages/mcp-server/src/agentmind-main.ts",
+      "sha256": "4c9772ff8fac2f365d06bd01a5fe646a9b82b357a57687a356f19b30640ed3af"
+    },
+    {
+      "path": "packages/mcp-server/src/agentmind.ts",
+      "sha256": "df1873fe9a1da433ea888123ff8b3fb2c82f898522b97660b00bdfe0a4e382b4"
+    },
+    {
+      "path": "packages/mcp-server/src/installer/context.ts",
+      "sha256": "4f640115decde6d71124c937458c1ca1fa21483a5f8481eaeae2db69c608078a"
+    },
+    {
+      "path": "packages/mcp-server/src/installer/doctor.ts",
+      "sha256": "bfd95a5e037461dbfa3adcd613afd00bbef442f2576c96b0cb2fd3ddb1e02147"
+    },
+    {
+      "path": "packages/mcp-server/src/installer/model.ts",
+      "sha256": "dcb5337af7538b1420aa0e42ffd8700067a8968501c1c6d9b397c248a0a2cb3b"
+    },
+    {
+      "path": "packages/mcp-server/src/installer/presentation.ts",
+      "sha256": "d5e3b72835d83a76a209034f9805ba7ac5c2854fba3baa40ec008d1b5175ec25"
+    },
+    {
+      "path": "packages/mcp-server/src/installer/registry.ts",
+      "sha256": "8fc6dd6311de50c459ba1f2b4622e091aad98ac0504cd64835be902136e9e341"
+    },
+    {
+      "path": "packages/mcp-server/src/installer/setup.ts",
+      "sha256": "051b5910e7da5b0e98912e30e95e8ee63a89d5688eca3eca9e03a83c2b6f0f17"
+    },
+    {
+      "path": "packages/mcp-server/src/installer/sqlite-driver.ts",
+      "sha256": "2141e943f722a9a84235eb8100de0ae6a18ca3ff30dda7e7ec8746ff353430f0"
+    },
+    {
+      "path": "scripts/package-evidence.mjs",
+      "sha256": "00e2c01b6b4673602f6564a8cf4ab674b9dd131c2ef04cf57783c467dca0e686"
+    },
+    {
+      "path": "tests/integration/global-cli.test.ts",
+      "sha256": "35a75b734f0ebcefd69c17e8f583a207622b7a3008065c9e6e975ba0719224d5"
+    },
+    {
+      "path": "tests/integration/setup-readiness.test.ts",
+      "sha256": "fcd3dfa5e565ca80a7e6a4ee5d51544284f174a1f71ce9a2d2402152328f423b"
+    },
+    {
+      "path": "tests/unit/setup-driver.test.ts",
+      "sha256": "5c135ecd182d6b3b93fb4b16bf028831b1fed3874d93c4db23f715805f6df86b"
+    }
+  ],
+  "logs": [
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-architecture.log",
+      "bytes": 199918,
+      "sha256": "b20ddd2d0ff194aa09eb57bc890c3e529ce8e63771d571faf2315fa2eb4eb7fb"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-broker.log",
+      "bytes": 238,
+      "sha256": "4dc4dec2910e07aed022b053acc67da97673a5b4ee558ba295f391299df914d3"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-database.log",
+      "bytes": 692,
+      "sha256": "45af7f52e2fcd1feeb5cf53ff4c425e84bc31d250aeb9f18f0babb35c87749e9"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-docs.log",
+      "bytes": 327,
+      "sha256": "c88ed7d87450d1c6d073bfa54c8f4a2adc5133e3fd71f2ecb72d74b701e32e1c"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-final-docs.log",
+      "bytes": 327,
+      "sha256": "c88ed7d87450d1c6d073bfa54c8f4a2adc5133e3fd71f2ecb72d74b701e32e1c"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-final-full.log",
+      "bytes": 2238,
+      "sha256": "a45f2b915307cfb9f1224678b268f25df3bd487aee1022067d621c49ef1388e5"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-final-isolated-readiness.log",
+      "bytes": 240,
+      "sha256": "42b24bec89823954d745b09660fcaee525a6cb8fb2efc1a17f5cbf45e51d9351"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-final-lint.log",
+      "bytes": 1309,
+      "sha256": "154080fb4662c222e6b835defce13f1fd84454e52cb481163a1ea916e4bd2adb"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-final-readiness.log",
+      "bytes": 11119,
+      "sha256": "a22318b000e3179a8513d9d2b10c6aafa43d348b5c0d03e91c6a4aaba43d32bc"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-final-security.log",
+      "bytes": 840,
+      "sha256": "ff13fe931275d0ebeaa9da1b1264378f0c043d6ccf1d68b1e07c148379610263"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-final-typecheck.log",
+      "bytes": 38,
+      "sha256": "b2e92930f4432b7a5ec6e2af13cd0e0c527d579c374a889fd79e2aeff32e886e"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-full.log",
+      "bytes": 2236,
+      "sha256": "b0e0834e8f6440aacbbd5e4c4c41b6e7104ef632479887daa1e3df1131794ad4"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-idempotency.log",
+      "bytes": 250,
+      "sha256": "faef27937d09c232b6c72699daf4e2fbde4a4a817299e7aa98a786cc279e2e46"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-isolated-readiness.log",
+      "bytes": 240,
+      "sha256": "632a745ec769090d2710897af57ea252cb457490f243d0a07665718d362e2c94"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-lint.log",
+      "bytes": 1309,
+      "sha256": "aa3b3933a623044e205346d83d5d7d556c2be188ba73c9fe9dbbc088c08e511a"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-readiness-complete.log",
+      "bytes": 8500,
+      "sha256": "856d1b87d03614e6c1814c675bf53ded90fee25b6977f88f6cf4e5124e05b7f2"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-readiness-final.log",
+      "bytes": 1379,
+      "sha256": "7083bdf24c2162eb8133dd946da7f76f4830a84bc5becba7921e6ee4cda42e6d"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-readiness-retest.log",
+      "bytes": 240,
+      "sha256": "4fd8939adb4acca49dcc031dd8169e95955919efe4f9d46df382cc977eb488f7"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-readiness.log",
+      "bytes": 1199,
+      "sha256": "a00f0bc0e86c3501b1e0c6d3dc84967147ea967373634f6ae10afffcb8809041"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-security.log",
+      "bytes": 841,
+      "sha256": "384adbf9a5928f54fb002f0bcada4cef85eaf6647c37bfeb1eacb876b59b4df2"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-smoke.log",
+      "bytes": 417,
+      "sha256": "5b4a4dc83b9d94e38640b023ac9012d17f637547a3c466174f329a54e1010973"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-snapshot-debug.log",
+      "bytes": 250,
+      "sha256": "fe4dfd627611b75ad3c5a4df3261af2032766780f8878f0b4afc916e9738a08e"
+    },
+    {
+      "path": "dist/artifacts/p6-005c/validation/agentmind-p6-005c-typecheck.log",
+      "bytes": 38,
+      "sha256": "b2e92930f4432b7a5ec6e2af13cd0e0c527d579c374a889fd79e2aeff32e886e"
+    }
+  ],
+  "commands": [
+    {
+      "command": "pnpm build",
+      "exit": 0
+    },
+    {
+      "command": "pnpm lint",
+      "exit": 0,
+      "note": "Existing informational useTemplate only; no errors/warnings"
+    },
+    {
+      "command": "pnpm typecheck",
+      "exit": 0
+    },
+    {
+      "command": "pnpm docs:check",
+      "exit": 0,
+      "files": 15,
+      "local_links": 48,
+      "shell_blocks": 20,
+      "json_blocks": 2,
+      "errors": 0
+    },
+    {
+      "command": "pnpm architecture:check",
+      "exit": 0,
+      "note": "Only CLI source location and two code-owned literal dynamic imports updated in freeze; all other contract fields unchanged"
+    },
+    {
+      "command": "pnpm smoke",
+      "exit": 0,
+      "note": "Actual SDK memory/experience restart and project isolation; no models"
+    },
+    {
+      "command": "pnpm exec vitest run tests/unit/setup-driver.test.ts tests/integration/setup-readiness.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/unit/architecture.test.ts --maxWorkers=2",
+      "exit": 0,
+      "tests": {
+        "passed": 91
+      },
+      "note": "Earlier stage, before adding original-v1 recovery scenario"
+    },
+    {
+      "command": "pnpm exec vitest run tests/integration/setup-readiness.test.ts tests/unit/setup-driver.test.ts --maxWorkers=1",
+      "exit": 0,
+      "tests": {
+        "passed": 37
+      },
+      "note": "Final stable-build isolated run including original-v1 owner recovery and unsupported-provider dependency exit5"
+    },
+    {
+      "command": "pnpm exec vitest run --maxWorkers=2",
+      "exit": 1,
+      "tests": {
+        "passed": 1327,
+        "failed": 6,
+        "skipped": 1
+      },
+      "test_files": 111,
+      "note": "Both broad runs fail only6 restricted-host Unix-socket broker errors. Last dependency-code exception correction tested by focused37 and installed smoke afterwards."
+    },
+    {
+      "command": "pnpm exec vitest run tests/integration/broker-native.test.ts --maxWorkers=1",
+      "exit": 0,
+      "sandbox_permissions": "require_escalated",
+      "tests": {
+        "passed": 10
+      },
+      "note": "Actual temporary Unix sockets work outside sandbox; not protected deployment certification"
+    },
+    {
+      "command": "pnpm test:database",
+      "exit": 0,
+      "tests": {
+        "passed": 79
+      },
+      "test_files": 7
+    },
+    {
+      "command": "pnpm test:security",
+      "exit": 0,
+      "tests": {
+        "passed": 151
+      },
+      "test_files": 11,
+      "note": "Final source, after exception mapping correction"
+    },
+    {
+      "command": "node scripts/verify-global-cli.mjs",
+      "exit": 0,
+      "tests": {
+        "passed": 1
+      },
+      "note": "Final fresh npm cache/prefix/HOME, real dependencies, actual installed bootstrap/FTS/MCP, repeat setup, no pnpm/sqlite3, physical driver/binding removal/restoration"
+    },
+    {
+      "command": "node scripts/package-evidence.mjs dist/artifacts/p6-005c/pack.json dist/artifacts/p6-005c/agentmind-1.0.0.tgz",
+      "exit": 0,
+      "files": 177
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    }
+  ],
+  "initial_diagnostics": [
+    "Pre-enrollment ordinary doctor retains existing exit7, not2; test corrected.",
+    "Injected migration error now uses production built AgentMindError class rather than distinct source class; no runtime security assertion weakened.",
+    "Overlapping source/prepack tsc builds changed adapter identities in existing consent snapshots, correctly causing INSTALLER_CONCURRENT_CHANGE. Stable-build source/installed idempotency tests and broad runs pass; guard retained.",
+    "Six broker sandbox errno1 failures recur; affected10 tests pass with approved sandbox escalation."
+  ],
+  "bootstrap_authority": "Only exclusively newly created registry; existing pending schemas, including empty files, require owner-approved db migrate digest",
+  "fts": "In-memory engine MATCH plus5 actual index integrity checks in a rolled-back transaction; no automatic rebuild or synthetic user records",
+  "dry_run": "Header-only existing-registry inspection, no live SQLite/WAL/SHM, configuration or MCP mutation; header can lag WAL",
+  "acceptance": [
+    {
+      "capability": "Existing components reused; one CLI/installer",
+      "status": "PASS",
+      "evidence": "Existing handlers/planner/apply/core/doctor, small loader and readiness orchestration"
+    },
+    {
+      "capability": "Actual SQLite driver/basic connection",
+      "status": "PASS",
+      "evidence": "Native in-memory query; installed fresh dependency"
+    },
+    {
+      "capability": "Missing JS driver/native binding refusal",
+      "status": "PASS",
+      "evidence": "Actual installed directory/binding removal and restoration, exit 5"
+    },
+    {
+      "capability": "ABI/platform/FTS-unavailable classification",
+      "status": "PASS",
+      "evidence": "Controlled loader failures; no raw diagnostics; unsupported real platform NOT VERIFIED"
+    },
+    {
+      "capability": "Registry default/explicit/receipt selection",
+      "status": "PASS",
+      "evidence": "Default private path, retained binding and conflict tests"
+    },
+    {
+      "capability": "Private writable canonical paths",
+      "status": "PASS",
+      "evidence": "0700/0600 new paths; denied unsafe/unwritable paths without chmod"
+    },
+    {
+      "capability": "Missing registry bootstrap",
+      "status": "PASS",
+      "evidence": "Exclusive creation, existing transactional core initialization/schema11"
+    },
+    {
+      "capability": "Existing current registry/data reuse",
+      "status": "PASS",
+      "evidence": "Historical/user memory and ledger preservation"
+    },
+    {
+      "capability": "Existing empty/old/future/unknown/corrupt handling",
+      "status": "PASS",
+      "evidence": "Safe refusal; old/empty owner digest required, no reset"
+    },
+    {
+      "capability": "Owner migration boundary/recovery",
+      "status": "PASS",
+      "evidence": "Original-v1 refusal, explicit owner migration, successful setup/FTS afterwards"
+    },
+    {
+      "capability": "Migration failure recovery",
+      "status": "PASS",
+      "evidence": "Injected failure preserves evidence; existing core rollback suites retained"
+    },
+    {
+      "capability": "Protected broker registry refusal",
+      "status": "PASS",
+      "evidence": "Actual fixture marker, no config mutation or protected authority"
+    },
+    {
+      "capability": "FTS5 engine and actual indexes",
+      "status": "PASS",
+      "evidence": "In-memory MATCH and five rolled-back index integrity checks"
+    },
+    {
+      "capability": "Missing/damaged FTS postings",
+      "status": "PASS",
+      "evidence": "Real fixture damage detected; no repair/user-record mutation"
+    },
+    {
+      "capability": "Codex configuration",
+      "status": "PASS",
+      "evidence": "Existing project adapter; installed generated process starts via SDK"
+    },
+    {
+      "capability": "Claude configuration",
+      "status": "PASS",
+      "evidence": "Existing project adapter; installed generated process starts via SDK"
+    },
+    {
+      "capability": "Gemini configuration",
+      "status": "PASS",
+      "evidence": "Existing project adapter/shared router; installed generated process starts via SDK"
+    },
+    {
+      "capability": "Missing provider reporting",
+      "status": "PASS",
+      "evidence": "Each provider missing tested; SKIP and exit2 for ready subset"
+    },
+    {
+      "capability": "Scope/user configuration ownership",
+      "status": "PASS",
+      "evidence": "Unsupported Codex user scope and user-owned conflicts refused"
+    },
+    {
+      "capability": "MCP initialization/tools/status/scope",
+      "status": "PASS",
+      "evidence": "Exact allowlist, expected enrollment/project/source/schema and read-only probes"
+    },
+    {
+      "capability": "MCP startup failure handling",
+      "status": "PASS",
+      "evidence": "Actual broken child adapter, ready:false/applied:true, exit7"
+    },
+    {
+      "capability": "MCP SDK-managed shutdown",
+      "status": "PASS",
+      "evidence": "Awaited SDK close in real process tests; independent exit-zero attestation NOT VERIFIED"
+    },
+    {
+      "capability": "Dry-run/default planning purity",
+      "status": "PASS",
+      "evidence": "Closed-WAL/header test with content/mode/mtime snapshot; no live DB/MCP writes"
+    },
+    {
+      "capability": "Repeated setup/idempotency",
+      "status": "PASS",
+      "evidence": "Same registry, no extra migrations/receipt/config/journal rewrites, memory retained"
+    },
+    {
+      "capability": "Partial configuration/interrupted lock recovery",
+      "status": "PASS",
+      "evidence": "Existing compensation/journal retained, no DB deletion, no automatic lock removal"
+    },
+    {
+      "capability": "Stable sanitized JSON and exit categories",
+      "status": "PASS",
+      "evidence": "Additive schema1 fields, actual CLI exit tests and controlled codes"
+    },
+    {
+      "capability": "No models/auth/skill execution/automatic approval",
+      "status": "PASS",
+      "evidence": "Direct SDK-only setup path, unchanged authority and full security suite"
+    },
+    {
+      "capability": "Global package outside checkout/no pnpm/sqlite3 CLI",
+      "status": "PASS",
+      "evidence": "Fresh-prefix installed suite with restricted PATH"
+    },
+    {
+      "capability": "README/documentation accuracy",
+      "status": "PASS",
+      "evidence": "Source links/shell/JSON checked; installed quick-start behavior tested"
+    },
+    {
+      "capability": "Full restricted regression command",
+      "status": "FAIL",
+      "evidence": "Six sandbox Unix-socket errors; exact counts recorded below/ledger"
+    },
+    {
+      "capability": "Affected unrestricted broker retry",
+      "status": "PASS",
+      "evidence": "10 tests pass with approved socket-capable execution"
+    },
+    {
+      "capability": "Clean OS/VM certification",
+      "status": "NOT VERIFIED",
+      "evidence": "Isolated HOME/prefix on developer host only"
+    },
+    {
+      "capability": "Authenticated native model integrations",
+      "status": "NOT VERIFIED",
+      "evidence": "Separate explicit owner authorization required"
+    },
+    {
+      "capability": "Protected OS/sandbox deployment",
+      "status": "NOT VERIFIED",
+      "evidence": "Existing restrictions/refusals remain"
+    },
+    {
+      "capability": "Final artifact recertification/publication",
+      "status": "NOT VERIFIED",
+      "evidence": "New digest and stale lineage recorded; independent approval required"
+    }
+  ],
+  "recertification": {
+    "prior_p6_005b_sha256": "89e505aa03177c2e8cf1547b1ded8f5d7f8036b0c4720cca84d1d35261df5f1e",
+    "status": "STALE for loader/setup/database bootstrap ordering/FTS/provider health/README and runtime assets",
+    "required": [
+      "Independent exact-artifact review",
+      "Clean supported host and Node/native ABI installation",
+      "Native Codex/Claude/Gemini discovery/use with separate authorization",
+      "Upgrade/recovery/data retention acceptance",
+      "Protected operator OS and sandbox verification for those profiles"
+    ]
+  },
+  "clean_machine": "NOT VERIFIED; isolated developer-host npm prefix/HOME only",
+  "native_models": "NOT VERIFIED; none invoked",
+  "protected_os": "NOT VERIFIED",
+  "behavioral_sandbox": "NOT VERIFIED",
+  "publication": "NO-GO; no commit/push/publish/tag/release performed"
+}

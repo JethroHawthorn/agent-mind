@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, symlinkSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  statSync,
+  symlinkSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -54,7 +62,15 @@ it.skipIf(!prefix)(
       run(['setup', '--cli', 'all', '--dry-run']);
       expect(existsSync(join(f.root, '.agentmind'))).toBe(false);
       run(['setup', '--cli', 'all', '--apply']);
-      expect(existsSync(join(f.home, '.agentmind/agentmind.db'))).toBe(false);
+      expect(existsSync(join(f.home, '.agentmind/agentmind.db'))).toBe(true);
+      const ready = JSON.parse(run(['setup', '--cli', 'all', '--apply', '--json']));
+      expect(ready.ready).toBe(true);
+      expect(ready.registry.created).toBe(false);
+      expect(
+        ready.checks.some(
+          (c: { id: string; status: string }) => c.id === 'fts' && c.status === 'PASS',
+        ),
+      ).toBe(true);
       for (const id of ['codex', 'claude', 'gemini']) {
         const enrollment = join(f.root, `.agentmind/${id}/enrollment.json`);
         expect(readFileSync(enrollment, 'utf8')).not.toContain(resolve('packages/mcp-server/dist'));
@@ -140,6 +156,26 @@ it.skipIf(!prefix)(
       expect(existsSync(database)).toBe(true);
       expect(run(['memory', 'search', 'sqlite'])).toContain('Page items: 3');
       expect(existsSync(join(f.home, '.claude'))).toBe(false);
+      // Installed-package loader and native binding failures must stop setup before configuration.
+      const packageRoot = resolve(runtime, '../..');
+      const sqlite = join(packageRoot, 'node_modules/better-sqlite3');
+      const binding = join(sqlite, 'build/Release/better_sqlite3.node');
+      renameSync(binding, `${binding}.disabled`);
+      try {
+        const failed = JSON.parse(run(['setup', '--cli', 'claude', '--apply', '--json'], [5]));
+        expect(failed.error.code).toBe('SQLITE_BINDING_MISSING');
+        expect(existsSync(join(f.root, '.mcp.json'))).toBe(false);
+      } finally {
+        renameSync(`${binding}.disabled`, binding);
+      }
+      renameSync(sqlite, `${sqlite}.disabled`);
+      try {
+        const failed = JSON.parse(run(['setup', '--cli', 'claude', '--apply', '--json'], [5]));
+        expect(failed.error.code).toBe('SQLITE_DRIVER_MISSING');
+        expect(existsSync(join(f.root, '.mcp.json'))).toBe(false);
+      } finally {
+        renameSync(`${sqlite}.disabled`, sqlite);
+      }
     } finally {
       f.cleanup();
     }

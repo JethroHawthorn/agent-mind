@@ -4256,7 +4256,7 @@
   ],
   "cli_options": [
     {
-      "file": "packages/mcp-server/src/agentmind.ts",
+      "file": "packages/mcp-server/src/agentmind-main.ts",
       "options": [
         {
           "definition": "{ type: 'boolean' }",
@@ -13405,6 +13405,14 @@
     {
       "file": "packages/core/src/database-maintenance.ts",
       "specifier": "node:fs"
+    },
+    {
+      "file": "packages/mcp-server/src/agentmind.ts",
+      "specifier": "./agentmind-main.js"
+    },
+    {
+      "file": "packages/mcp-server/src/installer/sqlite-driver.ts",
+      "specifier": "better-sqlite3"
     },
     {
       "file": "packages/mcp-server/src/skill-usage.ts",

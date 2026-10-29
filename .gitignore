@@ -16,3 +16,6 @@ native/bin/
 docs/reviews/*
 !docs/reviews/P6-005B_IMPLEMENTATION.md
 !docs/reviews/P6-005B_EVIDENCE.json
+
+!docs/reviews/P6-005C_SETUP_IMPLEMENTATION.md
+!docs/reviews/P6-005C_EVIDENCE.json

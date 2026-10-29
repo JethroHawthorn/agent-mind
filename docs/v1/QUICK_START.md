@@ -22,7 +22,7 @@ node "$REPO/packages/mcp-server/dist/agentmind.js" status --project-root "$PROJE
 node "$REPO/packages/mcp-server/dist/agentmind.js" doctor --project-root "$PROJECT" --db "$DB" --json
 ```
 
-Doctor can exit 7 when nothing is installed, or 2 for incomplete verification. That is not model authentication failure. Planning does not initialize the registry. If a supported CLI is installed, review its plan before explicitly applying it:
+Doctor can exit 7 when nothing is installed, or 2 for incomplete verification. That is not model authentication failure. Planning does not initialize the registry. Authorized `setup --apply` now bootstraps a missing registry, verifies FTS5 and checks the enrolled MCP runtime; older existing schemas still require owner-approved migration. If a supported CLI is installed, review its plan before explicitly applying it:
 
 ```sh
 node "$REPO/packages/mcp-server/dist/agentmind.js" setup --project-root "$PROJECT" --db "$DB" --cli codex --apply --json

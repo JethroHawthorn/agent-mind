@@ -3,6 +3,7 @@ import { AgentMindError, SCHEMA_VERSION } from '@agentmind/core';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { DAILY_TOOLS } from '../codex/configuration.js';
+import { readBounded } from '../codex/files.js';
 import { type Diagnostic, diagnostic, type Provider } from './model.js';
 import type { UnifiedInstaller } from './service.js';
 /** Opt-in SDK probe. No model/authentication; normal server startup can initialize its enrolled DB. */
@@ -46,11 +47,18 @@ export async function runtimeDoctor(
   const start = performance.now();
   try {
     const work = async () => {
+      const enrollment = JSON.parse(
+        readBounded(c.root, join(c.root, `.agentmind/${id}/enrollment.json`), 4096) ?? 'null',
+      );
+      if (enrollment?.database !== c.database || enrollment?.project_id !== service.project.id)
+        throw Error('registry binding');
       await client.connect(transport);
       await client.ping();
       const tools = (await client.listTools()).tools;
       const names = tools.map((t) => t.name);
       if (
+        names.length !== DAILY_TOOLS.length ||
+        new Set(names).size !== names.length ||
         names.some((n) =>
           /approve|promote|rollback|deactivate|distribution_sync|review_decide/.test(n),
         ) ||
@@ -62,6 +70,7 @@ export async function runtimeDoctor(
       if (result.isError) throw Error('health');
       const s = JSON.parse((result.content as { text?: string }[])[0]?.text ?? 'null');
       if (
+        s.ok !== true ||
         s.project_id !== service.project.id ||
         s.source_agent !== id ||
         s.schema_version !== SCHEMA_VERSION
@@ -115,8 +124,19 @@ export async function runtimeDoctor(
     });
   } finally {
     if (timeout) clearTimeout(timeout);
-    await client.close().catch(() => {});
-    await transport.close().catch(() => {});
+    try {
+      await client.close();
+      await transport.close();
+    } catch {
+      report.push(
+        diagnostic(
+          `${id}.shutdown`,
+          'FAIL',
+          'SDK transport shutdown did not complete cleanly.',
+          id,
+        ),
+      );
+    }
   }
   return report;
 }
