@@ -54,7 +54,8 @@
     "test:architecture": "pnpm build && vitest run tests/unit/architecture.test.ts tests/integration/architecture-boundary.test.ts --maxWorkers=2",
     "docs:check": "node scripts/docs-check.mjs",
     "release:plan": "node scripts/release.mjs plan",
-    "test:release": "pnpm build && vitest run tests/integration/release-readiness.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/unit/database-reliability.test.ts tests/integration/database-cli.test.ts --maxWorkers=2"
+    "test:release": "pnpm build && vitest run tests/integration/release-readiness.test.ts tests/unit/installer.test.ts tests/integration/installer.test.ts tests/unit/database-reliability.test.ts tests/integration/database-cli.test.ts --maxWorkers=2",
+    "test:rc": "pnpm build && vitest run tests/unit/rc-validation.test.ts --maxWorkers=1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.2",
