@@ -30,8 +30,9 @@ export function packageCLI(build = false) {
   const metadata = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   writeFileSync(
     join(target, 'package.json'),
-    `${JSON.stringify({ name: metadata.name, version: metadata.version, type: 'module', private: true }, null, 2)}\n`,
+    `${JSON.stringify({ name: metadata.name, version: metadata.version, license: metadata.license, type: 'module', private: true }, null, 2)}\n`,
   );
+  cpSync(join(root, 'LICENSE'), join(target, 'LICENSE'));
   for (const name of ['core', 'mcp-server']) {
     const destination = join(target, `packages/${name}/dist`);
     cpSync(join(root, `packages/${name}/dist`), destination, {

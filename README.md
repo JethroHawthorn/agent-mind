@@ -121,4 +121,4 @@ pnpm check
 
 ## License
 
-No license grant is present. Package metadata declares `UNLICENSED`; public distribution requires an owner-approved license and release authorization.
+Licensed under the [MIT License](LICENSE).

@@ -26,6 +26,12 @@ it('keeps proposed V1 metadata distinct from unapproved current source artifact 
     JSON.parse(readFileSync('package.json', 'utf8')).version,
   );
   expect(r.version_consistent_for_v1).toBe(false);
+  expect(r.license_file_present).toBe(true);
+  expect(r.license).toBe('MIT');
+  expect(r.license_notice_matches_source).toBe(true);
+  expect(
+    r.blockers.find((blocker: { id: string }) => blocker.id.endsWith('-LICENSE'))?.status,
+  ).toBe('PASS');
   expect(r.eligible_v1_artifact).toBeNull();
   expect(r.overall_decision).toBe('NO-GO');
   expect(r.prior_validation.certification_inherited).toBe(false);

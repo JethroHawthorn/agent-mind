@@ -12,7 +12,7 @@ const files = [];
 for (const file of metadata.files) {
   assert(!file.path.includes('..'));
   assert(
-    /^(?:package\.json|README\.md|SECURITY\.md|docs\/v1\/[A-Z0-9_]+\.md|dist\/runtime\/)/.test(
+    /^(?:package\.json|README\.md|SECURITY\.md|LICENSE|docs\/v1\/[A-Z0-9_]+\.md|dist\/runtime\/)/.test(
       file.path,
     ),
   );
@@ -38,6 +38,10 @@ assert(
 const packed = spawnSync('/usr/bin/tar', ['-xOf', archive, 'package/package.json']);
 const pkg = JSON.parse(packed.stdout.toString('utf8'));
 assert(!/workspace:|file:|link:/.test(JSON.stringify(pkg.dependencies)));
+assert.equal(pkg.license, 'MIT');
+assert(
+  files.some((file) => file.path === 'LICENSE' && file.sha256 === sha(readFileSync('LICENSE'))),
+);
 const evidence = {
   schema_version: 1,
   artifact: archive,

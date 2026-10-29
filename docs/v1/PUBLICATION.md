@@ -20,7 +20,7 @@ Before requesting publication, assemble a human-readable, independently reviewed
 - Exact repository/channel/destination, proposed tag and each requested mutation: local tag, particular remote refs, draft release/assets, final publication.
 - Expiry/change conditions and post-release/incident owner. Any source/artifact/destination/profile change invalidates this approval; unrelated earlier skill-operator grants cannot authorize release.
 
-All mandatory gates must pass for the chosen advertised profile. CONDITIONAL GO does not permit publication. Missing license/clean host/final review/version consistency are not waived by this document. Current preparation artifacts remain private and unlicensed; do not upload even a draft.
+All mandatory gates must pass for the chosen advertised profile. CONDITIONAL GO does not permit publication. Clean-host verification, final review and version consistency remain required. The source is licensed under the [MIT License](../../LICENSE); distributed artifacts must include the notice and declare MIT metadata. Publishing an official release still requires explicit authorization.
 
 ## Proposed channel and prerequisites
 
@@ -54,4 +54,4 @@ gh release edit v1.0.0 --repo JethroHawthorn/agent-mind --verify-tag --draft=fal
 
 ## Approval checklist and next steps
 
-No checklist item is currently marked approved. Required: resolve all mandatory blockers; reviewed consistent1.0.0 metadata/contract strategy; rebuild; independent exact-artifact recertification; clean install/native/security gates appropriate to selected profiles; owner license; explicit human approval of exact mutations/digests/destinations. Until then the rehearsal returns NO-GO and no publication machinery runs. Post-release checks remain NOT EXECUTED; follow [post-release and incident plan](POST_RELEASE.md) only after authorized publication.
+No checklist item is currently marked approved. Required: resolve all mandatory blockers; reviewed consistent1.0.0 metadata/contract strategy; rebuild; independent exact-artifact recertification; clean install/native/security gates appropriate to selected profiles; inclusion of the MIT license notice; explicit human approval of exact mutations/digests/destinations. Until then the rehearsal returns NO-GO and no publication machinery runs. Post-release checks remain NOT EXECUTED; follow [post-release and incident plan](POST_RELEASE.md) only after authorized publication.

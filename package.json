@@ -1,5 +1,6 @@
 {
   "name": "agentmind",
+  "author": "Jethro",
   "version": "1.0.0",
   "type": "module",
   "packageManager": "pnpm@11.6.0",
@@ -68,7 +69,7 @@
     "vitest": "^4.1.0"
   },
   "description": "Persistent memory and reusable skills for coding agents",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JethroHawthorn/agent-mind.git"
@@ -87,7 +88,8 @@
   "files": [
     "dist/runtime/",
     "README.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "LICENSE"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",

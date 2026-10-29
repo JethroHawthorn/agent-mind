@@ -11,7 +11,9 @@ it('packages existing compiled handlers with closed relative imports, runtime as
   expect(existsSync(entry)).toBe(true);
   expect(readFileSync(entry, 'utf8').startsWith('#!/usr/bin/env node\n')).toBe(true);
   expect(statSync(entry).mode & 0o111).toBe(0o111);
-  expect(manifest.license).toBe('UNLICENSED');
+  expect(manifest.license).toBe('MIT');
+  expect(readFileSync(join(runtime, 'LICENSE'), 'utf8')).toBe(readFileSync('LICENSE', 'utf8'));
+  expect(JSON.parse(readFileSync(join(runtime, 'package.json'), 'utf8')).license).toBe('MIT');
   for (const lifecycle of ['install', 'postinstall', 'preinstall', 'prepare'])
     expect(manifest.scripts[lifecycle]).toBeUndefined();
   expect(JSON.stringify(manifest.dependencies)).not.toMatch(/workspace:|file:|link:/);

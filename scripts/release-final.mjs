@@ -60,7 +60,7 @@ export function releaseAssessment({ artifact, sha256, root = repository }) {
       id: 'P6-004-LICENSE',
       class: 'B1',
       status: 'FAIL',
-      requirement: 'Owner-approved distribution license and review',
+      requirement: 'Declared license metadata and exact license notice included in the artifact',
     },
     {
       id: 'P6-002-AUDIT',
@@ -100,10 +100,17 @@ export function releaseAssessment({ artifact, sha256, root = repository }) {
       requirement: 'Actual qualified behavioral execution and protected evidence',
     },
   ];
-  const hasLicense = [...inspected.entries.keys()].some((p) =>
-    /\/(LICENSE|COPYING)(\.[A-Za-z]+)?$/.test(p),
-  );
-  if (hasLicense) blockers.find((b) => b.id === 'P6-004-LICENSE').status = 'NOT VERIFIED'; // Presence is not legal authorization.
+  const licenseBytes = inspected.entries.get(`${inspected.root}LICENSE`);
+  const hasLicense = !!licenseBytes;
+  const noticePath = join(root, 'LICENSE');
+  const licenseMatches =
+    pkg.license === 'MIT' &&
+    manifest.license === 'MIT' &&
+    hasLicense &&
+    existsSync(noticePath) &&
+    licenseBytes.equals(readFileSync(noticePath));
+  blockers.find((b) => b.id === 'P6-004-LICENSE').status = licenseMatches ? 'PASS' : 'FAIL';
+  // Artifact notice/metadata consistency is separate from release authorization.
   const consistent =
     pkg.version === PROPOSED_VERSION &&
     manifest.version === PROPOSED_VERSION &&
@@ -167,6 +174,8 @@ export function releaseAssessment({ artifact, sha256, root = repository }) {
       requires_independent_recertification: true,
     },
     license_file_present: hasLicense,
+    license: manifest.license ?? null,
+    license_notice_matches_source: licenseMatches,
     profiles,
     blockers,
     overall_decision: 'NO-GO',

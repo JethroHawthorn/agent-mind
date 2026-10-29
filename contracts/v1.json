@@ -17685,7 +17685,8 @@
           "build": "tsc -p tsconfig.json"
         },
         "type": "module",
-        "version": "0.0.1"
+        "version": "0.0.1",
+        "license": "MIT"
       },
       "path": "packages/core/package.json"
     },
@@ -17703,7 +17704,8 @@
           "build": "tsc -p tsconfig.json"
         },
         "type": "module",
-        "version": "0.0.1"
+        "version": "0.0.1",
+        "license": "MIT"
       },
       "path": "packages/mcp-server/package.json"
     }

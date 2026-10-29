@@ -63,7 +63,7 @@ it('plans without writing; builds identical normalized source archives and refus
     artifact_type: 'SOURCE_WORKSPACE_RC',
     release_approved: false,
     dependencies_bundled: false,
-    license: 'NO_LICENSE_GRANT_PRESENT',
+    license: 'MIT',
   });
   expect(
     before.files.every(
@@ -71,6 +71,7 @@ it('plans without writing; builds identical normalized source archives and refus
         !/(node_modules|\/dist\/|\.env|\.sqlite|\.db|native\/bin)/.test(f.path),
     ),
   ).toBe(true);
+  expect(before.files.some((file: { path: string }) => file.path === 'LICENSE')).toBe(true);
   const first = buildRelease(join(root, 'first.tgz')),
     second = buildRelease(join(root, 'second.tgz'));
   expect(first.sha256).toBe(second.sha256);
