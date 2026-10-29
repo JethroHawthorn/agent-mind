@@ -26,3 +26,5 @@ Before enrollment, follow the [quick start](docs/v1/QUICK_START.md). Setup defau
 Use the same explicit canonical project and database for all three integrations. Startup-selected scope is enforced by shared services; a caller-supplied project ID is not authorization. Local storage is not automatically private: same-UID processes may bypass application controls. Never point disposable tests at live user data.
 
 No license grant or public distribution authorization is currently present. Local source candidate artifacts do not grant publishing rights or establish clean-machine acceptance. P6-004 must verify the candidate on clean machines; protected/native/behavioral profiles require their own evidence.
+
+Release preparation: [unreleased V1.0.0 notes](docs/v1/RELEASE_NOTES_1_0_0.md), [changelog](CHANGELOG.md), and [controlled publication proposal](docs/v1/PUBLICATION.md). Current package metadata remains 0.0.1; all publication profiles remain NO-GO. These documents do not authorize publication.

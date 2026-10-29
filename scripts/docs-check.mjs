@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 export function checkDocs(root = fileURLToPath(new URL('../', import.meta.url))) {
   const files = [
     'README.md',
+    'CHANGELOG.md',
     'SECURITY.md',
     ...readdirSync(resolve(root, 'docs/v1'))
       .filter((p) => p.endsWith('.md'))

@@ -21,6 +21,7 @@ export const releaseRoot = realpathSync(fileURLToPath(new URL('../', import.meta
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 const files = [
   'README.md',
+  'CHANGELOG.md',
   'SECURITY.md',
   'package.json',
   'pnpm-lock.yaml',
