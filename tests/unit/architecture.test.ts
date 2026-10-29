@@ -26,7 +26,7 @@ it('freezes actual SDK MCP schemas, core exports, CLI options and database/packa
   expect(result.grant_consumers).toHaveLength(5);
   expect(result.grant_consumers.every((x) => x.args === 3)).toBe(true);
   // Output JSON schemas are an explicitly recorded legacy gap, not manufactured verification.
-  expect(result.missing_output_schemas.length).toBe(42);
+  expect(result.missing_output_schemas.length).toBe(24);
 }, 20000);
 it('detects new cycles and keeps type-only cycles distinct from runtime initialization', () => {
   expect(

@@ -181,7 +181,7 @@ it('extracts RC, builds both packages without repo dist, and executes documented
   const mcpModules = join(artifact, 'packages/mcp-server/node_modules');
   mkdirSync(join(mcpModules, '@agentmind'), { recursive: true });
   symlinkSync(join(artifact, 'packages/core'), join(mcpModules, '@agentmind/core'));
-  for (const id of ['@modelcontextprotocol', 'better-sqlite3'])
+  for (const id of ['@modelcontextprotocol', 'better-sqlite3', 'zod'])
     symlinkSync(resolve('packages/mcp-server/node_modules', id), join(mcpModules, id));
   const home = join(root, 'isolated-home');
   mkdirSync(home);

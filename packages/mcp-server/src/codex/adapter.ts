@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import { AgentMindError, enrollmentSchema, safeError } from '@agentmind/core';
 import { readConfig } from '../config.js';
 import { startServer } from '../runtime.js';
+import { DAILY_TOOLS } from './configuration.js';
 import { assertCallerProject, ENROLLMENT, rejectLinks } from './project.js';
 export function loadEnrollment(path: string, cwd = process.cwd()) {
   if (!isAbsolute(path))
@@ -52,7 +53,7 @@ async function main() {
     '--enable-authoring',
     '--enable-retrieval',
   ]);
-  await startServer(config, true);
+  await startServer(config, true, DAILY_TOOLS);
 }
 
 // Separate parser module is imported by the installer/tests; the entry guard never starts a server on import.

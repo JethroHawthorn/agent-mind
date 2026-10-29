@@ -16,9 +16,12 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import ts from 'typescript';
 import * as core from '../packages/core/dist/index.js';
+import { createBrokerMcpServer } from '../packages/mcp-server/dist/broker-mcp.js';
 import { DAILY_TOOLS } from '../packages/mcp-server/dist/codex/configuration.js';
+import { outputSchemas, toolErrorSchema } from '../packages/mcp-server/dist/mcp-output.js';
 
 export const repository = realpathSync(fileURLToPath(new URL('../', import.meta.url)));
 const slash = (p) => p.replaceAll('\\', '/');
@@ -282,6 +285,29 @@ export async function mcpContract() {
     rmSync(root, { recursive: true, force: true });
   }
 }
+async function brokerMcpContract() {
+  // Software transport contract only. Does not attest protected peer authentication.
+  const server = createBrokerMcpServer({}, async () => {
+    throw Error('NO_EXECUTION_IN_CONTRACT_CAPTURE');
+  });
+  const client = new Client({ name: 'broker-contract-capture', version: '1' });
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  try {
+    await server.connect(a);
+    await client.connect(b);
+    return (await client.listTools()).tools
+      .map(({ name, inputSchema, outputSchema, annotations }) => ({
+        name,
+        inputSchema,
+        outputSchema: outputSchema ?? null,
+        annotations: annotations ?? {},
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } finally {
+    await client.close();
+    await server.close();
+  }
+}
 export async function currentContract() {
   const z = createRequire(new URL('../packages/core/package.json', import.meta.url))('zod');
   const schemas = {};
@@ -306,6 +332,14 @@ export async function currentContract() {
     core_input_schemas: schemas,
     mcp: await mcpContract(),
     daily_tools: [...DAILY_TOOLS].sort(),
+    daily_output_contracts: Object.fromEntries(
+      Object.entries(outputSchemas).map(([name, schema]) => [
+        name,
+        z.toJSONSchema(schema, { target: 'draft-7', io: 'output' }),
+      ]),
+    ),
+    tool_error_contract: z.toJSONSchema(toolErrorSchema, { target: 'draft-7', io: 'output' }),
+    broker_mcp: await brokerMcpContract(),
     cli_options: analysis.cli_options,
     storage_schema: core.SCHEMA_VERSION,
     package_format_sources: [

@@ -17,6 +17,7 @@ import {
   searchSchema,
 } from '@agentmind/core';
 import type { readConfig } from './config.js';
+import { outputSchemas, successResult } from './mcp-output.js';
 import { createServer } from './server.js';
 import { createShutdown } from './shutdown.js';
 import { createMcpTransport } from './transport.js';
@@ -81,35 +82,29 @@ export async function startServer(
       config.retrievalEnabled ? new SkillRetrievalService(db, config.project) : undefined,
       allowedTools,
     );
-    if (integrationStatus)
+    if (integrationStatus && (!allowedTools || allowedTools.includes('agentmind_status')))
       server.registerTool(
         'agentmind_status',
         {
           description:
             'Read local database health, trusted project identity and enabled integration features. Supervised mode is not OS-authenticated authorization.',
           inputSchema: searchSchema.pick({}),
+          outputSchema: outputSchemas.agentmind_status,
           annotations: { readOnlyHint: true, openWorldHint: false },
         },
         () => {
           try {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify({
-                    ...memory.health(),
-                    source_agent: config.sourceAgent,
-                    learning: config.learningEnabled,
-                    authoring: config.authoringEnabled,
-                    retrieval: config.retrievalEnabled,
-                    mode: 'supervised-local',
-                    protected_deployment: 'NOT VERIFIED',
-                    autonomous_activation: 'NO-GO',
-                    release_boundaries: releaseBoundaryStatus(),
-                  }),
-                },
-              ],
-            };
+            return successResult('agentmind_status', {
+              ...memory.health(),
+              source_agent: config.sourceAgent,
+              learning: config.learningEnabled,
+              authoring: config.authoringEnabled,
+              retrieval: config.retrievalEnabled,
+              mode: 'supervised-local',
+              protected_deployment: 'NOT VERIFIED',
+              autonomous_activation: 'NO-GO',
+              release_boundaries: releaseBoundaryStatus(),
+            });
           } catch (error) {
             const failure = safeError(error);
             console.error(`[agentmind] ${failure.code}`);
