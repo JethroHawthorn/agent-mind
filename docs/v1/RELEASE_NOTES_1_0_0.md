@@ -6,7 +6,7 @@ AgentMind is a local-first, project-scoped memory, continuous-learning and immut
 
 ## Verified at the offline artifact/fixture layer
 
-Previous RC4 and renewed preparation-artifact tests distinguish actual generic MCP/adapter processes from native coding models. They exercise memory persistence, experiences/provenance, structured learning, immutable CREATE_NEW/PATCH_EXISTING/REWRITE_EXISTING proposals, static validation, advisory review, hybrid discovery, exact approved version/resource integrity, project isolation, managed setup/removal, SQLite recovery and distribution journals. See the exact artifact/checksum and fresh final results in the local P6-005 evidence bundle; earlier counts are not final certification.
+Artifact tests distinguish actual generic MCP/adapter processes from native coding models. They exercise memory persistence, experiences/provenance, structured learning, immutable CREATE_NEW/PATCH_EXISTING/REWRITE_EXISTING proposals, static validation, advisory review, hybrid discovery, exact approved version/resource integrity, project isolation, managed setup/removal, SQLite recovery and distribution journals. See the exact artifact/checksum and fresh final results in the artifact verification evidence; earlier counts are not final certification.
 
 - Shared memory/experiences retain project scope and lower-trust source assertions.
 - Compact candidate cards support aliases, triggers, applicability/negative applicability, abstention and exact active-version retrieval. Selection/retrieval does not prove successful application.
@@ -26,7 +26,7 @@ These are version observations, not an authenticated compatibility certification
 
 ## Security profile limits
 
-Actual SEC-01 OS-separated authority remains NOT VERIFIED. Ordinary local-owner mode is supervised; unrestricted same-UID code may access owner files/SQLite or simulate a PTY. Protected approval requires independently verified identities, permissions, broker peer authority and exact grants. It is not provisioned by setup.
+Actual OS-separated authority remains NOT VERIFIED. Ordinary local-owner mode is supervised; unrestricted same-UID code may access owner files/SQLite or simulate a PTY. Protected approval requires independently verified identities, permissions, broker peer authority and exact grants. It is not provisioned by setup.
 
 Actual BE-001 sandbox isolation remains NOT VERIFIED, with no accepted executable backend. Behavioral execution refuses rather than running untrusted candidate scripts on the host. Static PASS and model-reported success are not trusted behavioral evidence. No automatic approval, promotion or distribution is enabled.
 
@@ -38,7 +38,7 @@ macOS arm64/Node22.13.1/pnpm11.6.0 is the observed developer-host environment, w
 
 The intended channel is a source-workspace archive, not an npm package or self-contained executable. After a separately authorized and licensed release, installation follows [quick start](QUICK_START.md) and [installation](INSTALLATION.md): frozen-lock dependency installation, build, then direct Node CLI/MCP. Source paths refer to the extracted workspace. No global configuration or privileged service is silently installed. Use a reviewed setup dry-run and explicit apply.
 
-No historical released package upgrade is claimed. Schema remains11 with no migration in this milestone. See [backup/upgrade/downgrade policy](UPGRADE.md); keep verified backup/source artifacts and stop clients before upgrade. Ordinary uninstall retains knowledge, audit and backups. No unrelated config or edited native skill may be overwritten.
+No historical released package upgrade is claimed. The database schema is version 11. See [backup/upgrade/downgrade policy](UPGRADE.md); keep verified backup/source artifacts and stop clients before upgrade. Ordinary uninstall retains knowledge, audit and backups. No unrelated config or edited native skill may be overwritten.
 
 ## Remaining publication blockers
 

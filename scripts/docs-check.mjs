@@ -49,7 +49,7 @@ export function checkDocs(root = fileURLToPath(new URL('../', import.meta.url)))
       errors.push({ path, rule: 'UNSUPPORTED_ASSURANCE_CLAIM' });
   }
   const install = readFileSync(resolve(root, 'docs/v1/INSTALLATION.md'), 'utf8');
-  for (const token of ['NOT VERIFIED', 'Codex', 'Claude', 'Gemini', '0700', 'P6-004']) {
+  for (const token of ['NOT VERIFIED', 'Codex', 'Claude', 'Gemini', '0700', 'clean-machine']) {
     // Private mode is documented in upgrade rather than install.
     if (token === '0700') continue;
     if (!install.includes(token))

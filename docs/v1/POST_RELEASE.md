@@ -1,12 +1,12 @@
 # Post-release verification and incident plan — NOT EXECUTED
 
-No release has been authorized or published by this milestone. Every check below is a future check, not PASS. This runbook does not grant network, credential, Git or registry mutation authority.
+No release has been authorized or published. Every check below is a future check, not PASS. This runbook does not grant network, credential, Git or registry mutation authority.
 
 ## After separately authorized publication
 
 An authorized verifier checks that the published tag resolves to the approved full source commit; assets/filenames/SHA-256 match the independent approval record; release notes and runtime/package versions agree; downloads work from the actual approved channel; clean supported targets install/build from the downloaded archive; MCP handshake/memory persistence/project isolation/doctor and approved retrieval work; protected/behavioral features retain their required refusal or actual verified boundaries. Do not enable model/native/OS/sandbox probes without their separate usage/deployment authorization. Check upgrade data retention and uninstall/reinstall using disposable data before operational rollout.
 
-Retain expected and observed remote digests, verification environment/toolchain/commands/exits and sanitized logs. Do not infer published bytes from a local artifact or merely matching filenames. Checksums are not signatures; verify any later signature against independently trusted keys, never keys shipped alongside untrusted bytes alone. No remote tag, release, download or post-release operation was queried/executed for P6-005.
+Retain expected and observed remote digests, verification environment/toolchain/commands/exits and sanitized logs. Do not infer published bytes from a local artifact or merely matching filenames. Checksums are not signatures; verify any later signature against independently trusted keys, never keys shipped alongside untrusted bytes alone.
 
 ## Partial publication
 

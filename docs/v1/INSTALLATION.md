@@ -66,13 +66,13 @@ Re-running setup on unchanged managed artifacts should SKIP. Edited/user-owned/f
 | D Behavioral verified | Trusted suite/policy/collector plus verified sandbox | NOT VERIFIED; no execution backend; static PASS is not behavioral PASS |
 | E Full protected | All native/OS/sandbox/distribution/privacy gates | NOT VERIFIED, not supported for production release |
 
-No terminal prompt establishes OS identity separation. No `--unsafe` or weaker execution fallback is provided. Run status, ordinary doctor and database doctor; obtain separate authorized deployment/isolation/native evidence for advanced profiles. P6-004 clean-machine testing and independent review remain blockers for publication.
+No terminal prompt establishes OS identity separation. No `--unsafe` or weaker execution fallback is provided. Run status, ordinary doctor and database doctor; obtain separate authorized deployment/isolation/native evidence for advanced profiles. Clean-machine testing and independent review remain required before publication.
 
 ## Optional native probes
 
 The npm runtime includes the existing opt-in native session harnesses and their helpers. They resolve runtime assets inside the installed package. They have not been run against authenticated providers here. Protected native peer binaries are excluded; deployment requires a separately built and verified helper. Ordinary doctor and explicit `doctor --connect` use the installed adapters. Protected deployment must supply its own verified runtime; global installation grants no operator authority.
 
-## One-command supervised setup (P6-005C)
+## One-command supervised setup
 
 `agentmind setup --cli all --apply` uses one receipt-bound registry: explicit `--db` when compatible with all receipts, otherwise the existing binding, otherwise `~/.agentmind/agentmind.db`. A conflicting explicit path or disagreeing receipts stops; setup never silently creates another registry. Project scope remains default. New registry directories/files use 0700/0600; existing unsafe ownership/permissions or aliases are refused, never recursively repaired.
 

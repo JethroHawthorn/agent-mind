@@ -1,6 +1,6 @@
 # MCP release correction and compatibility
 
-P6-005A is an internal release-blocker correction. Publication remains **NO-GO** pending independent review and renewed artifact acceptance. Package version remains 0.0.1 under the existing release policy. This work does not certify native model invocation, protected OS deployment or sandbox isolation.
+The MCP contracts define the supported tool surfaces. Publication remains **NO-GO** pending independent review and renewed artifact acceptance. This work does not certify native model invocation, protected OS deployment or sandbox isolation.
 
 ## Tool surfaces
 
@@ -23,7 +23,7 @@ The installed SDK serializes object roots; root Zod unions were incorrectly adve
 
 All 19 daily tools have outputSchema and matching structuredContent. Existing JSON text is retained for older consumers. Known identity, trust, digest and pagination fields are checked before success is returned; additive fields are preserved. Errors have isError=true and a separate text error envelope; protocol validation errors remain SDK errors. No empty/null output schema is substituted for missing guarantees. The other 24 generic legacy/internal tools retain their historical output behavior.
 
-Nested context/outcome objects remain required. Descriptions show the accepted form; no ambiguous success shorthand is normalized. Reported success is never independently verified success. The existing review_get bundle already includes authoring, validation/evaluation, lifecycle and evidence summary. Full diff and evidence pages remain progressive disclosures. Tool renaming, deletion, 44-to-16 redesign and a new combined review API are deferred to a separately reviewed compatibility milestone.
+Nested context/outcome objects remain required. Descriptions show the accepted form; no ambiguous success shorthand is normalized. Reported success is never independently verified success. The existing review_get bundle already includes authoring, validation/evaluation, lifecycle and evidence summary. Full diff and evidence pages remain progressive disclosures. Tool renaming, deletion, 44-to-16 redesign and a new combined review API are deferred to a separate compatibility review.
 
 Legacy skill_get already classifies enabled telemetry as mutating, records best-effort observations synchronously, and tolerates observation errors. It is absent from daily profiles. Disabling telemetry makes it read-only. Broker skill_get does not record that observation. No telemetry was silently removed.
 
@@ -53,4 +53,4 @@ Optional AGENTMIND_MCP_SNAPSHOT_OUTPUT and AGENTMIND_MCP_RESPONSE_OUTPUT accept 
 
 ## Recertification
 
-contracts/v1.json records the intentional correction: compact inputs, daily/broker output schemas, separate error envelope, Codex policy, and an explicit dependency on the already locked Zod version. No SQLite schema, immutable package format, core public input or lifecycle authority changed. Previous P6-004/P6-005 artifacts cannot certify the changed MCP claims. Rebuild the local source RC; rerun affected artifact MCP, native-adapter, authoring, retrieval, review, security, packaging and documentation tests; then obtain separate independent recertification. Real native provider calls require separate authorization. Protected OS and executable sandbox deployment remain NOT VERIFIED.
+contracts/v1.json records the intentional correction: compact inputs, daily/broker output schemas, separate error envelope, Codex policy, and an explicit dependency on the already locked Zod version. No SQLite schema, immutable package format, core public input or lifecycle authority changed. Earlier artifacts cannot certify changed MCP contracts. Rebuild the local source RC; rerun affected artifact MCP, native-adapter, authoring, retrieval, review, security, packaging and documentation tests; then obtain separate independent recertification. Real native provider calls require separate authorization. Protected OS and executable sandbox deployment remain NOT VERIFIED.

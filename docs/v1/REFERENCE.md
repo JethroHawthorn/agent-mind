@@ -42,7 +42,7 @@ Default memory tool examples:
 
 ## Shared lifecycle
 
-Memory/experience → learning signal → immutable CREATE_NEW/PATCH_EXISTING/REWRITE_EXISTING proposal → static validation/evaluation → advisory queue → protected approval if deployed → active version → approved retrieval/distribution. Review recommendation, static PASS, model selection and evaluation text never replace operator authority. Core query/ranking/state semantics remain unchanged in this milestone.
+Memory/experience → learning signal → immutable CREATE_NEW/PATCH_EXISTING/REWRITE_EXISTING proposal → static validation/evaluation → advisory queue → protected approval if deployed → active version → approved retrieval/distribution. Review recommendation, static PASS, model selection and evaluation text never replace operator authority.
 
 ## MCP profiles and compatibility
 
