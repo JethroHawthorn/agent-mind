@@ -1,6 +1,6 @@
 # Maintainers: candidate preparation and verification
 
-The release strategy is a **source workspace RC**, preserving the two private workspace packages, pinned pnpm lock, TypeScript build and existing relative router/adapter paths. It is not an npm publishable bundle, standalone binary or preinstalled dependency image. Package version 1.0.0 is not a released semver promise. The source is licensed under the [MIT License](../../LICENSE). Include its notice in distributions; publishing an official release remains a separately authorized action.
+The release strategy is a **source workspace RC**, preserving the two private workspace packages, pinned pnpm lock, TypeScript build and existing relative router/adapter paths. The source RC is separate from the npm runtime artifact described below. The npm baseline is `@jethrohawthorn/agentmind@1.0.0`; the Antigravity feature candidate is 1.1.1 and has not been published. The source is licensed under the [MIT License](../../LICENSE). Include its notice in distributions; publishing an official release remains a separately authorized action.
 
 ## Local preparation
 
@@ -43,7 +43,7 @@ Clean-host installation and independent architecture/security review remain requ
 
 ## Global npm CLI artifact
 
-The root `@jethrohawthorn/agentmind` package is the distribution wrapper and exposes the `agentmind` command. Command ownership remains `packages/mcp-server/src/agentmind.ts`; there is no second CLI package. Root `bin` targets `dist/runtime/packages/mcp-server/dist/agentmind.js`. For version 1.0.0, `npm pack` produces `jethrohawthorn-agentmind-1.0.0.tgz`.
+The root `@jethrohawthorn/agentmind` package is the distribution wrapper and exposes the `agentmind` command. Command ownership remains `packages/mcp-server/src/agentmind.ts`; there is no second CLI package. Root `bin` targets `dist/runtime/packages/mcp-server/dist/agentmind.js`. For version 1.1.1, `npm pack` produces `jethrohawthorn-agentmind-1.1.1.tgz`.
 
 ```sh
 mkdir -p dist/artifacts
@@ -53,8 +53,12 @@ node scripts/verify-global-cli.mjs
 
 `prepack` uses the existing TypeScript configurations, copies compiled JavaScript and the router to an allowlisted runtime tree, and rewrites only internal `@agentmind/core` module specifiers to package-relative imports. Both workspace directory layouts are retained for adapters, curator workers and asset resolution. Detailed documentation remains in the repository; the selected npm files list includes the runtime, README, SECURITY policy and MIT license notice. SQLite migrations and schemas are compiled modules. No source maps, TypeScript sources, databases, credentials, native binaries or workspace node_modules enter the package. External dependencies install normally through npm; no `workspace:*` runtime dependency remains. No new bundler or separately published core package is needed.
 
-`npm pack` builds locally and does not publish. `npm install` has no AgentMind lifecycle script; dependency scripts may install the SQLite binding. There is no runtime pnpm dependency. The root metadata declares version 1.0.0 and license `MIT`; this does not approve release publication. Workspace implementation packages retain their existing private 0.0.1 metadata and are not separately distributed. Repository metadata comes from the existing Git remote. No registry name claim or V1 approval is implied.
+`npm pack` builds locally and does not publish. `npm install` has no AgentMind lifecycle script; dependency scripts may install the SQLite binding. There is no runtime pnpm dependency. The root metadata declares version 1.1.1 and license `MIT`; this does not approve release publication. Workspace implementation packages retain their existing private 0.0.1 metadata and are not separately distributed. Repository metadata comes from the existing Git remote. No registry name claim or V1 approval is implied.
 
 The explicit installation smoke uses a disposable npm prefix/cache/HOME, followed by the installed executable with a PATH containing Node and provider executable doubles only. It exercises all three installed MCP adapters, memory/FTS, configuration, read-only views and data-preserving removal. It retains its temporary evidence directory. It needs network/native-build access for a fresh dependency installation; it never uses developer dependency symlinks in the installed runtime. This is not clean-OS/native-model certification.
 
 Artifact identity includes the npm pack file manifest and a separately recorded SHA-256 in the artifact manifest. The changed executable, imports, package assets, metadata and README invalidate previous RC certification for those paths. Rebuild and independently review the exact new artifact, then repeat clean supported-host installation, native provider acceptance, upgrade/recovery and relevant security/profile tests before publication. Existing verification requirements remain open.
+
+Antigravity ships through the existing recursive compiled-runtime packaging: `antigravity/adapter.js` and `antigravity/setup.js`, plus the shared router. It needs no separate template or memory service. Schema 12 adds Antigravity provenance; existing registry migration requires owner-approved digest and backup. The contract candidate changes require review and invalidate earlier executable/schema certification. See [P6-005D report](../reviews/P6-005D_ANTIGRAVITY_INTEGRATION.md).
+
+P6-005D.1 uses explicit Antigravity user registration bound to one project; unsupported project setup fails closed. Owned legacy migration removes the old entry only after SDK health and real native inventory checks. `node scripts/verify-npm-artifact.mjs` checks npm publish normalization/dry-run, the exact tarball, fresh global install, npm exec and npx with isolated credentials/HOME. It does not publish. See [remediation](../reviews/P6-005D_1_REMEDIATION.md).

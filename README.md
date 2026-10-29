@@ -1,8 +1,15 @@
 # AgentMind
 
-AgentMind gives OpenAI Codex CLI, Anthropic Claude Code and Google Gemini CLI persistent project memory and reusable Agent Skills. Keep useful decisions and solutions across sessions, with local storage and human-supervised skill approval.
+AgentMind gives coding agents persistent project memory and reusable Agent Skills. Supported providers:
 
-Once published to npm, install AgentMind globally and connect your project:
+- Codex CLI
+- Claude Code
+- Antigravity CLI (explicit user registration, bound to one project)
+- Gemini CLI (legacy compatibility)
+
+Keep useful decisions and solutions across sessions, with local storage and human-supervised skill approval.
+
+Install AgentMind globally and connect your project:
 
 ```sh
 npm install --global @jethrohawthorn/agentmind
@@ -14,6 +21,16 @@ agentmind doctor
 
 Requires Node.js 22.13 or later and at least one supported coding-agent CLI. No pnpm is needed to use the installed package. See [installation](docs/v1/INSTALLATION.md) for provider setup details and platform limits.
 
+Antigravity requires an explicit project-bound user registration:
+
+```sh
+agentmind setup --cli antigravity --scope user --dry-run
+agentmind setup --cli antigravity --scope user --apply
+agentmind doctor --cli antigravity --scope user --connect
+```
+
+`agy` uses `~/.gemini/config/mcp_config.json`. Standalone project MCP discovery is unsupported; `--cli all` skips Antigravity in project scope and reports a warning. Calls from other projects remain denied. See [installation](docs/v1/INSTALLATION.md) for legacy migration and native verification limits.
+
 ## Why AgentMind?
 
 Coding agents lose context between sessions, so useful solutions get rediscovered. AgentMind preserves project knowledge for later sessions and other authorized agents working on that project. Reviewed, approved skills can turn repeated solutions into reusable guidance.
@@ -24,7 +41,7 @@ Coding agents lose context between sessions, so useful solutions get rediscovere
 - Continuous-learning proposals and a review queue.
 - Skill discovery and retrieval.
 - Human-supervised skill approval.
-- Codex, Claude and Gemini integration.
+- Codex, Claude, Antigravity and legacy Gemini integration.
 - Local-first SQLite storage.
 
 ## Installation
@@ -84,7 +101,7 @@ Run knowledge commands after setup reports local readiness.
 | View review queue | `agentmind review list` |
 | Remove managed integrations | `agentmind uninstall --cli all --dry-run`, then `agentmind uninstall --cli all --apply` |
 
-Use `agentmind --help` for all command groups, including database maintenance, evaluation and distribution. Shared router dependencies can require uninstalling Gemini before Codex; follow the generated plan.
+Use `agentmind --help` for all command groups, including database maintenance, evaluation and distribution. For Antigravity lifecycle commands, use `--cli antigravity --scope user`. Shared router dependencies can require uninstalling Gemini before Codex; follow the generated plan.
 
 ## Safety and Privacy
 

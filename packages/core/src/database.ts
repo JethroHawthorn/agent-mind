@@ -1,6 +1,7 @@
 import { chmodSync, lstatSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import Database from 'better-sqlite3';
+import { migrateAntigravitySources } from './antigravity-source-migration.js';
 import { AgentMindError } from './errors.js';
 import { migrateExperiences } from './experience-migration.js';
 import { migrateExperienceScopeIndex } from './experience-scope-migration.js';
@@ -12,7 +13,7 @@ import { migrateSkillDiscovery } from './skill-search-migration.js';
 import { migrateSkillUsage } from './skill-usage-migration.js';
 import { migrateStorageReliability, verifyCoreSchema } from './storage-reliability-migration.js';
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export function migrate(db: Database.Database, preflight?: () => void): void {
   if (db.inTransaction)
@@ -93,6 +94,7 @@ export function migrate(db: Database.Database, preflight?: () => void): void {
       if (version < 9) migrateSkillUsage(db);
       if (version < 10) migrateGeminiSources(db);
       if (version < 11) migrateStorageReliability(db);
+      if (version < 12) migrateAntigravitySources(db);
       verifyCoreSchema(db);
       const violations = db.pragma('foreign_key_check') as unknown[];
       if (violations.length) {

@@ -449,7 +449,7 @@ it('migrates v8 without changing immutable skills and rolls back a failed v9 mig
     f.db.prepare("SELECT name FROM sqlite_master WHERE name='failed_usage_fixture'").get(),
   ).toBeUndefined();
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
   expect(f.store.getVersion(f.candidate.version.id)).toEqual(before);
   expect(f.db.pragma('foreign_key_check')).toEqual([]);
 });

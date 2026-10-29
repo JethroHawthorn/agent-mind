@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.1 — Native discovery and npm remediation candidate (unpublished)
+
+- Require explicit project-bound user registration for Antigravity; refuse unsupported project setup and warn/skip it under project `--cli all`.
+- Migrate receipt-owned legacy entries only after SDK and actual native inventory checks; preserve recovery evidence and rollback a pending migration on uninstall.
+- Use a canonical npm bin target; verify publish dry-run normalization, tarball, isolated global installation, npm exec and npx.
+- Correct native/version evidence and scope documentation. No model execution or publication is implied.
+
+Version decision: npm currently lists 1.0.0 and the stage version. Use 1.1.1 as a distinct patch candidate for remediation of the reviewed, unpublished 1.1.0 artifact; old candidate certification is stale.
+
+
+## 1.1.0 — Antigravity integration candidate (unpublished)
+
+- Add the independent `antigravity` provider and `agy` detection/override across unified lifecycle commands.
+- Manage Antigravity MCP JSON and Router Skills in documented project/user locations with receipt ownership and shared-router safeguards.
+- Reuse daily MCP allowlisting, project/registry binding and supervised SQLite setup; add schema 12 provenance migration with owner-digest authorization for existing registries.
+- Add direct stdio/coexistence/regression coverage and npm runtime artifact checks. Native Antigravity model execution and authenticated cross-agent workflows remain NOT VERIFIED.
+
+The historical release-preparation notes below describe earlier candidates; npm 1.0.0 is now the published baseline. No publication is performed for this candidate.
+
+
 ## Unreleased — V1.0.0 proposal
 
 **Publication decision: NO-GO.** This is release preparation, not a published V1.0.0. Package/workspace/CLI runtime metadata remains 0.0.1 under the existing V1 contract freeze. Finalizing version 1.0.0 requires a reviewed compatibility/metadata change, rebuild and independent recertification. No previous published versions or upgrade guarantees are implied.

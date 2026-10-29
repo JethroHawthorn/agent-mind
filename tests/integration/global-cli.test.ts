@@ -31,8 +31,13 @@ it.skipIf(!prefix)(
       mkdirSync(path);
       symlinkSync(process.execPath, join(path, 'node'));
       symlinkSync('/usr/bin/git', join(path, 'git'));
-      for (const id of ['codex', 'claude', 'gemini'] as const)
-        symlinkSync(f.options.executables[id], join(path, id));
+      for (const id of ['codex', 'claude', 'gemini', 'antigravity'] as const)
+        symlinkSync(
+          id === 'antigravity' && process.env.AGENTMIND_ANTIGRAVITY_EXECUTABLE
+            ? process.env.AGENTMIND_ANTIGRAVITY_EXECUTABLE
+            : f.options.executables[id],
+          join(path, id === 'antigravity' ? 'agy' : id),
+        );
       const env = {
         HOME: f.home,
         PATH: `${path}:${join(prefix as string, 'bin')}`,
@@ -59,11 +64,16 @@ it.skipIf(!prefix)(
       );
       run(['--unknown'], [4]);
       expect(existsSync(join(f.root, '.agentmind'))).toBe(false);
+      const refused = JSON.parse(run(['setup', '--cli', 'antigravity', '--apply', '--json'], [3]));
+      expect(refused.error.code).toBe('ANTIGRAVITY_SCOPE_UNSUPPORTED');
+      expect(existsSync(join(f.home, '.gemini/config/mcp_config.json'))).toBe(false);
       run(['setup', '--cli', 'all', '--dry-run']);
       expect(existsSync(join(f.root, '.agentmind'))).toBe(false);
-      run(['setup', '--cli', 'all', '--apply']);
+      run(['setup', '--cli', 'all', '--apply'], [2]);
+      run(['setup', '--cli', 'antigravity', '--scope', 'user', '--dry-run']);
+      run(['setup', '--cli', 'antigravity', '--scope', 'user', '--apply']);
       expect(existsSync(join(f.home, '.agentmind/agentmind.db'))).toBe(true);
-      const ready = JSON.parse(run(['setup', '--cli', 'all', '--apply', '--json']));
+      const ready = JSON.parse(run(['setup', '--cli', 'all', '--apply', '--json'], [2]));
       expect(ready.ready).toBe(true);
       expect(ready.registry.created).toBe(false);
       expect(
@@ -71,7 +81,7 @@ it.skipIf(!prefix)(
           (c: { id: string; status: string }) => c.id === 'fts' && c.status === 'PASS',
         ),
       ).toBe(true);
-      for (const id of ['codex', 'claude', 'gemini']) {
+      for (const id of ['codex', 'claude', 'gemini', 'antigravity']) {
         const enrollment = join(f.root, `.agentmind/${id}/enrollment.json`);
         expect(readFileSync(enrollment, 'utf8')).not.toContain(resolve('packages/mcp-server/dist'));
         const receipt = readFileSync(join(f.root, `.agentmind/${id}/installation.json`), 'utf8');
@@ -86,7 +96,14 @@ it.skipIf(!prefix)(
         } else {
           const config = JSON.parse(
             readFileSync(
-              join(f.root, id === 'claude' ? '.mcp.json' : '.gemini/settings.json'),
+              join(
+                id === 'antigravity' ? f.home : f.root,
+                id === 'claude'
+                  ? '.mcp.json'
+                  : id === 'antigravity'
+                    ? '.gemini/config/mcp_config.json'
+                    : '.gemini/settings.json',
+              ),
               'utf8',
             ),
           );
@@ -135,8 +152,20 @@ it.skipIf(!prefix)(
       }
       expect(run(['status'])).toContain('CONFIGURED');
       run(['doctor'], [2]);
-      run(['doctor', '--connect'], [2]);
-      for (const action of ['repair', 'update']) run([action, '--cli', 'all', '--dry-run']);
+      run(['doctor', '--cli', 'claude', '--connect'], [2]);
+      expect(run(['status', '--cli', 'antigravity', '--scope', 'user'])).toContain('CONFIGURED');
+      run(['doctor', '--cli', 'antigravity', '--scope', 'user'], [2]);
+      run(['doctor', '--cli', 'antigravity', '--scope', 'user', '--connect'], [2]);
+      for (const action of ['repair', 'update'])
+        for (const id of ['codex', 'claude', 'gemini', 'antigravity'])
+          run([
+            action,
+            '--cli',
+            id,
+            '--scope',
+            id === 'antigravity' ? 'user' : 'project',
+            '--dry-run',
+          ]);
       for (const args of [
         ['memory', 'search', 'sqlite'],
         ['experience', 'search', 'sqlite'],
@@ -152,9 +181,17 @@ it.skipIf(!prefix)(
       const database = join(f.home, '.agentmind/agentmind.db');
       expect(statSync(database).size).toBeGreaterThan(0);
       // Shared router ownership requires Gemini removal before Codex.
-      for (const id of ['gemini', 'claude', 'codex']) run(['uninstall', '--cli', id, '--apply']);
+      for (const id of ['antigravity', 'gemini', 'claude', 'codex'])
+        run([
+          'uninstall',
+          '--cli',
+          id,
+          '--scope',
+          id === 'antigravity' ? 'user' : 'project',
+          '--apply',
+        ]);
       expect(existsSync(database)).toBe(true);
-      expect(run(['memory', 'search', 'sqlite'])).toContain('Page items: 3');
+      expect(run(['memory', 'search', 'sqlite'])).toContain('Page items: 4');
       expect(existsSync(join(f.home, '.claude'))).toBe(false);
       // Installed-package loader and native binding failures must stop setup before configuration.
       const packageRoot = resolve(runtime, '../..');

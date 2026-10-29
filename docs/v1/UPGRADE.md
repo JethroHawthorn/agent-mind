@@ -1,15 +1,16 @@
 # Upgrade, migration and recovery
 
-There is no previously published V1/npm upgrade path. Package metadata remains 0.0.1; database schema, package format, evidence and installer receipts have independent versions. A package version alone does not identify a source snapshot: retain the source identity and candidate checksum. Preserve the [frozen contracts](../../contracts/README.md).
+The published npm baseline is `@jethrohawthorn/agentmind@1.0.0`; the unpublished Antigravity remediation candidate is 1.1.1. Back up the registry before upgrading; database schema, package format, evidence and installer receipts have independent versions. A package version alone does not identify a source snapshot: retain the source identity and candidate checksum. Preserve the [frozen contracts](../../contracts/README.md).
 
 ## Compatibility matrix
 
 | Starting state | Target | Status / evidence |
 | --- | --- | --- |
-| Empty registry | Current schema 11 | Supported offline fresh creation |
-| Actual original schema 1 fixture | Schema 11 | Tested backup, restore staging, migration and memory/FTS preservation; no historical npm release implied |
-| Populated schema 9 fixture constructed by historical migrations | Schema 11 | Existing migration tests preserve active versions, digests, provenance and audit |
-| Current schema 11 | Current code | No downgrade/migration; ledger and compatibility checked |
+| Empty registry | Current schema 12 | Supported offline fresh creation |
+| Actual original schema 1 fixture | Schema 12 | Tested backup, restore staging, migration and memory/FTS preservation; no historical npm release implied |
+| Populated schema 9 fixture constructed by historical migrations | Schema 12 | Existing migration tests preserve active versions, digests, provenance and audit |
+| Schema 11 registry | Schema 12 | Backup and explicit owner-approved migration digest required |
+| Current schema 12 | Current code | No downgrade/migration; ledger and compatibility checked |
 | Unversioned nonempty / malformed / future schema | Current | Refused, never reset |
 | Protected broker registry | Ordinary local maintenance | Refused; separately authorized operator upgrade required |
 | Managed current router/config | Same source version | SKIP when unchanged; missing managed router repair tested |
@@ -80,3 +81,13 @@ node "$CLI" db restore --bundle "$BACKUP" --checksum "$CHECKSUM" --output "$REST
 ```
 
 The existing live file remains intact. Inspect external package availability, exact active digests, security policy and distribution journals before manually selecting restored state. Extra packages on disk are not activation authority. Restoring old approval records is not fresh operator authorization. Backup verification preserves original schema and NOT_VERIFIED classifications; a restored historical DB needs a new forward migration. No automated switching of live paths or protected restore is supplied.
+
+## Antigravity candidate 1.1.0
+
+Schema 12 widens provenance checks for `experiences.source_agent`, `skill_versions.source_agent` and `skill_usage_events.source_cli` to include `antigravity`. The transaction preserves rowids, records, immutable skill digests, triggers, indexes and approval/audit history, and appends a checksummed migration-ledger entry. It grants no new lifecycle authority. Fresh setup bootstraps schema 12; existing registries stop until the owner reviews `agentmind db migrate --dry-run`, retains a backup and applies the exact approved schema digest using the maintenance workflow above. Do not point the older 1.0.0 runtime at a schema 12 registry; use a verified pre-upgrade backup for rollback.
+
+Gemini enrollment is retained. Antigravity uses separate receipts/config; imported MCP entries require manual ownership resolution. Inspect `setup --cli antigravity --dry-run` before apply. A managed router update preserves project/registry binding and may require dependent providers to be removed first. Antigravity `update --dry-run` can refresh installed Node/adapter paths only when the current configuration exactly matches a validated old receipt; explicit apply re-enrolls the same project/registry using the new runtime. Changed user configuration is never adopted. Keep the old runtime and backups until the update is verified.
+
+## 1.1.1 Antigravity registration remediation
+
+Project `--cli all` now warns/skips Antigravity instead of claiming a working standalone project registration. Explicit `setup --cli antigravity --scope user --dry-run` previews a receipt-owned legacy migration. Apply stages the supported global entry bound to the same authorized project/registry; SDK health and native inventory must pass before removing the old owned config. Failure retains it and recovery evidence; rerun setup to finish, or uninstall the pending user registration to restore the old receipt/enrollment. Changed/unowned configs are never adopted. Existing schema 12 stays unchanged by this remediation. No plugin install or Gemini migration is automatic.

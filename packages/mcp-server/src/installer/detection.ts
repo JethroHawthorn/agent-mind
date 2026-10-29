@@ -10,6 +10,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  statSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, isAbsolute, join } from 'node:path';
@@ -25,7 +26,9 @@ export function detectCli(id: Provider, override?: string, deep = true): Detecti
     authentication: 'NOT_VERIFIED' as const,
     native_discovery: 'NOT_VERIFIED' as const,
   };
-  const name = override ?? id;
+  const name = override ?? (id === 'antigravity' ? 'agy' : id);
+  if ([...name].some((c) => c.charCodeAt(0) < 32) || (name.includes('/') && !isAbsolute(name)))
+    return { ...base, state: 'CONFIG_ERROR' };
   const paths = isAbsolute(name)
     ? [name]
     : (process.env.PATH ?? '')
@@ -37,6 +40,10 @@ export function detectCli(id: Provider, override?: string, deep = true): Detecti
   for (const p of paths) {
     if (!existsSync(p)) continue;
     try {
+      if (!statSync(p).isFile()) {
+        unreadable = true;
+        continue;
+      }
       accessSync(p, constants.X_OK);
       executable = realpathSync(p);
       break;
@@ -77,6 +84,16 @@ export function detectCli(id: Provider, override?: string, deep = true): Detecti
     const v = run(['--version']),
       version = v.text.match(/\b\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?\b/i)?.[0] ?? null;
     if (!deep)
+      return {
+        ...base,
+        executable,
+        version,
+        state: v.ok && version ? 'DETECTED' : 'UNSUPPORTED_VERSION',
+        stdio: 'NOT_VERIFIED',
+      };
+    // Antigravity documents interactive /mcp, not Gemini's mcp/skills subcommands.
+    // A public version probe establishes presence only; stdio is verified by runtimeDoctor.
+    if (id === 'antigravity')
       return {
         ...base,
         executable,

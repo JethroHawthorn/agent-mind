@@ -247,7 +247,7 @@ describe('scoped skill discovery', () => {
     );
     migrate(f.db);
     migrate(f.db);
-    expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+    expect(f.db.pragma('user_version', { simple: true })).toBe(12);
     expect(f.store.getVersion(first.version.id)).toEqual(before);
     expect(f.store.search('SQLite').skills[0]?.identity.id).toBe(first.identity.id);
   });

@@ -66,7 +66,7 @@ it('status JSON is read-only, scoped, bounded and does not initialize SQLite', (
   expect(r.status).toBe(0);
   const s = JSON.parse(r.stdout);
   expect(s.schema_version).toBe(1);
-  expect(s.integrations).toHaveLength(3);
+  expect(s.integrations).toHaveLength(4);
   expect(s.authentication).toBe('NOT_VERIFIED_NO_AUTH_PROBES');
   expect(existsSync(f.options.database)).toBe(false);
   expect(existsSync(join(f.root, '.agentmind'))).toBe(false);

@@ -30,7 +30,11 @@ export function migrateGeminiSources(db: Database.Database): void {
     );
     // Some recovery/older-schema fixtures retain an already widened parent.
     // Accept only our exact canonical widened check; never skip an unknown constraint.
-    if (row?.sql.includes(`CHECK(${column} IN ('codex','claude','gemini','unknown'))`)) continue;
+    if (
+      row?.sql.includes(`CHECK(${column} IN ('codex','claude','gemini','unknown'))`) ||
+      row?.sql.includes(`CHECK(${column} IN ('codex','claude','gemini','antigravity','unknown'))`)
+    )
+      continue;
     if (!row || [...row.sql.matchAll(oldCheck)].length !== 1)
       throw new AgentMindError(
         'MIGRATION_SCHEMA_UNSUPPORTED',

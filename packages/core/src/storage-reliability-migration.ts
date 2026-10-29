@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
+import { ANTIGRAVITY_MIGRATION_CHECKSUM } from './antigravity-source-migration.js';
 import { AgentMindError } from './errors.js';
 
 /** Forward-only v11. V1–v10 retain their original user_version-based history;
@@ -32,10 +33,13 @@ export function verifyMigrationLedger(db: Database.Database) {
       .prepare('SELECT version,name,checksum FROM schema_migrations ORDER BY version')
       .all() as { version: number; name: string; checksum: string }[];
     if (
-      rows.length !== 1 ||
+      rows.length !== 2 ||
       rows[0]?.version !== 11 ||
       rows[0]?.name !== 'storage-reliability-v1' ||
-      rows[0]?.checksum !== STORAGE_MIGRATION_CHECKSUM
+      rows[0]?.checksum !== STORAGE_MIGRATION_CHECKSUM ||
+      rows[1]?.version !== 12 ||
+      rows[1]?.name !== 'antigravity-provenance-v1' ||
+      rows[1]?.checksum !== ANTIGRAVITY_MIGRATION_CHECKSUM
     )
       throw new Error('Invalid ledger');
   } catch {

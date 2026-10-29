@@ -223,7 +223,7 @@ it('rolls back migration preflight failures and leaves original version intact',
   expect(db.pragma('user_version', { simple: true })).toBe(0);
   expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
   migrate(db);
-  expect(db.pragma('user_version', { simple: true })).toBe(11);
+  expect(db.pragma('user_version', { simple: true })).toBe(12);
   db.close();
 });
 it('passive checkpoint exposes actual busy/log/checkpoint counters', () => {
@@ -261,7 +261,7 @@ it('detects missing or changed migration checksums without resetting the schema'
   expect(inspectDatabase(f.path, true)).toMatchObject({ status: 'FAIL', schema_structure: 'FAIL' });
   expect(() => openDatabase(f.path)).toThrow(/ledger/);
   expect(() => planDatabaseMigration(f.path)).toThrow(/ledger/);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
 });
 it('rejects symbolic-link SQLite sidecars on ordinary runtime opens', () => {
   const f = fixture();

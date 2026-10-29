@@ -97,39 +97,48 @@ export class UnifiedInstaller {
   plan(action: Action, ids: readonly Provider[] = PROVIDERS) {
     const plans: InstallPlan[] = [];
     this.adapters.gemini.expectSharedRouter(false);
+    this.adapters.antigravity.expectSharedRouter(false);
     for (const id of [...ids].sort((a, b) => PROVIDERS.indexOf(a) - PROVIDERS.indexOf(b))) {
       if (
-        id === 'gemini' &&
+        (id === 'gemini' || (id === 'antigravity' && this.context.scope === 'project')) &&
         action !== 'uninstall' &&
         plans.some((p) => p.cli === 'codex' && ['INSTALL', 'REPAIR'].includes(p.disposition))
       )
-        this.adapters.gemini.expectSharedRouter();
-      plans.push(this.adapters[id].plan(action));
+        this.adapters[id].expectSharedRouter();
+      plans.push(this.adapters[id].plan(action, ids.length > 1));
     }
-    const codex = plans.find(
-      (p) => p.cli === 'codex' && p.disposition !== 'SKIP' && p.disposition !== 'CONFLICT',
-    );
-    if (codex && (action === 'uninstall' || codex.disposition === 'UPDATE')) {
-      const raw = readBounded(
-        this.context.root,
-        join(this.context.root, '.agentmind/gemini/installation.json'),
-        1048576,
-      );
-      if (raw) {
-        const g = JSON.parse(raw);
+    // Shared files keep one owner; dependents must leave before their owner changes.
+    for (const owner of plans.filter((p) => p.cli === 'codex' || p.cli === 'antigravity')) {
+      if (
+        owner.disposition === 'SKIP' ||
+        owner.disposition === 'CONFLICT' ||
+        !(action === 'uninstall' || owner.disposition === 'UPDATE')
+      )
+        continue;
+      for (const dependent of ['gemini', 'antigravity'] as const) {
+        if (dependent === owner.cli) continue;
+        const raw = readBounded(
+          this.context.root,
+          join(this.context.root, `.agentmind/${dependent}/installation.json`),
+          1048576,
+        );
+        if (!raw) continue;
+        const r = JSON.parse(raw);
         if (
-          g.phase !== 'removed' &&
-          g.router?.owned === false &&
-          g.router?.path === join(this.context.root, '.agents/skills/agentmind-router/SKILL.md') &&
-          !(action === 'uninstall' && ids.includes('gemini'))
+          r.phase !== 'removed' &&
+          r.router?.owned === false &&
+          owner.operations.some(
+            (o) => o.path === r.router.path && o.operation !== 'VERIFY_REUSED',
+          ) &&
+          !(action === 'uninstall' && ids.includes(dependent))
         ) {
-          codex.disposition = 'CONFLICT';
-          codex.diagnostics.push(
+          owner.disposition = 'CONFLICT';
+          owner.diagnostics.push(
             diagnostic(
-              'codex.shared-router',
+              `${owner.cli}.shared-router`,
               'FAIL',
-              'Gemini reuses the Codex router. Uninstall Gemini first, then update/remove Codex, then set Gemini up again; no dependent router is deleted.',
-              'codex',
+              `Uninstall ${dependent} before updating/removing its shared router owner; then set it up again.`,
+              owner.cli,
             ),
           );
         }
@@ -138,7 +147,11 @@ export class UnifiedInstaller {
     return plans;
   }
   apply(plans: InstallPlan[]) {
-    if (!plans.length || plans.length > 3 || new Set(plans.map((p) => p.cli)).size !== plans.length)
+    if (
+      !plans.length ||
+      plans.length > PROVIDERS.length ||
+      new Set(plans.map((p) => p.cli)).size !== plans.length
+    )
       throw new AgentMindError('INSTALLER_PLAN_INVALID', 'Select each CLI at most once.');
     for (const p of plans) this.adapters[p.cli].validate(p);
     const root = this.context.root,
@@ -177,13 +190,28 @@ export class UnifiedInstaller {
       for (const p of plans) this.adapters[p.cli].validate(p);
       save();
       const ordered = plans.every((p) => p.action === 'uninstall')
-        ? [...plans].sort((a, b) => PROVIDERS.indexOf(b.cli) - PROVIDERS.indexOf(a.cli))
+        ? [...plans].sort((a, b) => {
+            const depends = (x: InstallPlan, y: InstallPlan) =>
+              x.operations.some(
+                (o) =>
+                  o.operation === 'VERIFY_REUSED' &&
+                  y.operations.some((p) => p.path === o.path && p.operation === 'REMOVE_MANAGED'),
+              );
+            return depends(a, b)
+              ? -1
+              : depends(b, a)
+                ? 1
+                : PROVIDERS.indexOf(b.cli) - PROVIDERS.indexOf(a.cli);
+          })
         : plans;
       for (const p of ordered) {
         try {
           this.adapters[p.cli].apply(p);
           journal.completed.push(p.cli);
-          if (p.cli === 'codex') this.adapters.gemini.sharedRouterReady();
+          if (p.cli === 'codex') {
+            this.adapters.gemini.sharedRouterReady();
+            this.adapters.antigravity.sharedRouterReady();
+          }
           save();
         } catch (error) {
           journal.failure_code =
@@ -193,17 +221,24 @@ export class UnifiedInstaller {
           for (const id of [...journal.completed].reverse()) {
             const prior = plans.find((p) => p.cli === id);
             if (prior?.disposition === 'INSTALL') {
-              if (id === 'codex') {
+              const sharedDependents = ['gemini', 'antigravity'].some((dependent) => {
+                if (dependent === id) return false;
                 const text = readBounded(
                   root,
-                  join(root, '.agentmind/gemini/installation.json'),
+                  join(root, `.agentmind/${dependent}/installation.json`),
                   1048576,
                 );
-                if (text) {
-                  const dep = JSON.parse(text);
-                  if (dep.phase !== 'removed' && dep.router?.owned === false) continue;
-                }
-              }
+                if (!text) return false;
+                const dep = JSON.parse(text);
+                return (
+                  dep.phase !== 'removed' &&
+                  dep.router?.owned === false &&
+                  prior.operations.some(
+                    (o) => o.path === dep.router.path && o.operation !== 'VERIFY_REUSED',
+                  )
+                );
+              });
+              if (sharedDependents) continue;
               try {
                 const undo = this.adapters[id].plan('uninstall');
                 this.adapters[id].apply(undo);

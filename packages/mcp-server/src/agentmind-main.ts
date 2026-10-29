@@ -26,7 +26,7 @@ import { completeSetup } from './installer/setup.js';
 
 const help = `AgentMind integrations — supervised local installation
 Usage: agentmind setup|status|doctor|repair|update|uninstall [options]
-  --cli codex|claude|gemini|all  Target providers (default: detected for setup, all for inspection)
+  --cli codex|claude|gemini|antigravity|all  Target providers (default: detected for setup, all for inspection)
   --project-root PATH          Explicit repository/worktree root (default current directory)
   --scope project|user         Project default; Codex user scope remains unsupported
   --db PATH                    Shared registry; existing receipt binding is preserved
@@ -37,7 +37,7 @@ Usage: agentmind setup|status|doctor|repair|update|uninstall [options]
   --protected-config PATH      Doctor: read-only protected deployment breakdown; no service start
   --connect                    Doctor: explicitly start enrolled MCP; can initialize/migrate SQLite
   --native --allow-model       Doctor: explicit opt-in to a disposable native Scenario A probe
-  --codex PATH --claude PATH --gemini PATH  Official executable overrides
+  --codex PATH --claude PATH --gemini PATH --antigravity PATH  Official executable overrides
   -h, --help                   No project or CLI required
 Status/ordinary doctor never authenticate or invoke models. Optional hooks are preserved,
 not installed. Setup creates a missing registry, checks schema/FTS5 and connects MCP.
@@ -92,6 +92,7 @@ async function main() {
       codex: { type: 'string' },
       claude: { type: 'string' },
       gemini: { type: 'string' },
+      antigravity: { type: 'string' },
     },
   });
   if (v.help) {
@@ -109,7 +110,7 @@ async function main() {
     (v.cli && !['all', ...PROVIDERS].includes(v.cli)) ||
     (v.apply && (!mutation || v['dry-run'])) ||
     ((v.connect || v.native) && action !== 'doctor') ||
-    (v.native && (!v['allow-model'] || v.codex || v.claude || v.gemini)) ||
+    (v.native && (!v['allow-model'] || v.codex || v.claude || v.gemini || v.antigravity)) ||
     (v['allow-model'] && !v.native) ||
     (v['dry-run'] && !mutation)
   )
@@ -137,7 +138,7 @@ async function main() {
     adapters: Object.fromEntries(
       PROVIDERS.map((id) => [id, join(base, id, 'adapter.js')]),
     ) as Record<Provider, string>,
-    executables: { codex: v.codex, claude: v.claude, gemini: v.gemini },
+    executables: { codex: v.codex, claude: v.claude, gemini: v.gemini, antigravity: v.antigravity },
   });
   let ids: Provider[] = v.cli && v.cli !== 'all' ? [v.cli as Provider] : [...PROVIDERS];
   let result: unknown;
@@ -167,6 +168,7 @@ async function main() {
       checks,
       registry,
       native,
+      integrations: service.status(ids).integrations,
       model_invocations_authorized: !!v.native,
       protected_deployment: 'NOT_VERIFIED',
       behavioral_sandbox: 'NOT_VERIFIED',
@@ -208,7 +210,13 @@ async function main() {
         rl.close();
       }
     }
-    if (action === 'setup') {
+    if (
+      action === 'setup' ||
+      ((action === 'repair' || action === 'update') &&
+        v.cli === 'antigravity' &&
+        v.scope === 'user' &&
+        service.adapters.antigravity.inspect().managed)
+    ) {
       const requested = v.cli === 'all' || !ids.length ? [...PROVIDERS] : ids;
       const setup = await completeSetup(service, requested, v.apply ?? false);
       result = setup;

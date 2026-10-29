@@ -32,9 +32,7 @@ for (const file of metadata.files) {
   files.push({ ...file, sha256: sha(result.stdout) });
 }
 const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
-assert(
-  files.some((file) => `./${file.path}` === manifest.bin.agentmind && (file.mode & 0o111) !== 0),
-);
+assert(files.some((file) => file.path === manifest.bin.agentmind && (file.mode & 0o111) !== 0));
 const packed = spawnSync('/usr/bin/tar', ['-xOf', archive, 'package/package.json']);
 const pkg = JSON.parse(packed.stdout.toString('utf8'));
 assert(!/workspace:|file:|link:/.test(JSON.stringify(pkg.dependencies)));

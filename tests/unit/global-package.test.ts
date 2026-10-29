@@ -9,11 +9,14 @@ it('packages existing compiled handlers with closed relative imports, runtime as
   const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
   expect(manifest.name).toBe('@jethrohawthorn/agentmind');
   expect(JSON.parse(readFileSync(join(runtime, 'package.json'), 'utf8')).name).toBe(manifest.name);
+  expect(manifest.bin.agentmind).toBe('dist/runtime/packages/mcp-server/dist/agentmind.js');
   const entry = resolve(manifest.bin.agentmind);
   expect(existsSync(entry)).toBe(true);
   expect(readFileSync(entry, 'utf8').startsWith('#!/usr/bin/env node\n')).toBe(true);
   expect(statSync(entry).mode & 0o111).toBe(0o111);
   expect(manifest.license).toBe('MIT');
+  expect(existsSync(join(runtime, 'packages/mcp-server/dist/antigravity/adapter.js'))).toBe(true);
+  expect(existsSync(join(runtime, 'packages/mcp-server/dist/antigravity/setup.js'))).toBe(true);
   expect(readFileSync(join(runtime, 'LICENSE'), 'utf8')).toBe(readFileSync('LICENSE', 'utf8'));
   expect(JSON.parse(readFileSync(join(runtime, 'package.json'), 'utf8')).license).toBe('MIT');
   for (const lifecycle of ['install', 'postinstall', 'preinstall', 'prepare'])

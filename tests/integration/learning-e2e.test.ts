@@ -500,7 +500,7 @@ it('E2E-08: migration interruption rolls back DDL and preserves existing scoped 
   ).toBeUndefined();
   f.db.exec('DROP TABLE skill_usage_events');
   migrate(f.db);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
   expect(f.db.pragma('foreign_key_check')).toEqual([]);
 });
 

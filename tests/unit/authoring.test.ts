@@ -425,7 +425,7 @@ it('rolls back failed authoring migrations and preserves core schema v9', () => 
   f.db.exec('CREATE TABLE authoring_proposals(unrelated TEXT)');
   expect(() => service.context(p)).toThrow('transaction failed');
   expect(authoringStorageExists(f.db)).toBe(false);
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
   f.db.exec('DROP TABLE authoring_proposals');
   expect(service.context(p).id).toBeTruthy();
 });

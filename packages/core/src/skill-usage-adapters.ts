@@ -10,6 +10,12 @@ import { SkillStore } from './skill-store.js';
 import { SkillUsageService, usageObservationId } from './skill-usage.js';
 
 export const usageCapabilities = Object.freeze({
+  antigravity: {
+    adapter: 'explicit-mcp-v1',
+    native_skill_invocation: false,
+    reason:
+      'Explicit MCP observations only; no native Antigravity skill hook or model execution is inferred.',
+  },
   gemini: {
     adapter: 'explicit-mcp-v1',
     native_skill_invocation: false,

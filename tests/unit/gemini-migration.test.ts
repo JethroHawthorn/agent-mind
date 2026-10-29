@@ -86,7 +86,7 @@ it('upgrades actual populated v9, preserving approved version bytes, active poin
     .all();
   migrate(db);
   migrate(db);
-  expect(db.pragma('user_version', { simple: true })).toBe(11);
+  expect(db.pragma('user_version', { simple: true })).toBe(12);
   expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
   expect(db.pragma('foreign_key_check')).toEqual([]);
   expect(new SkillStore(db, f.scope).getVersion(approved.version.id)).toEqual(before);
@@ -152,12 +152,73 @@ it('upgrades actual populated v10 through the checksummed v11 index migration', 
   const before = db.prepare('SELECT * FROM skill_versions WHERE id=?').get(approved.version.id);
   const records = db.prepare('SELECT * FROM skill_operator_events ORDER BY id').all();
   migrate(db);
-  expect(db.pragma('user_version', { simple: true })).toBe(11);
+  expect(db.pragma('user_version', { simple: true })).toBe(12);
   expect(db.prepare('SELECT * FROM skill_versions WHERE id=?').get(approved.version.id)).toEqual(
     before,
   );
   expect(db.prepare('SELECT * FROM skill_operator_events ORDER BY id').all()).toEqual(records);
   expect(
     db.prepare('SELECT version,length(checksum) AS size FROM schema_migrations').all(),
-  ).toEqual([{ version: 11, size: 64 }]);
+  ).toEqual([
+    { version: 11, size: 64 },
+    { version: 12, size: 64 },
+  ]);
+});
+it('upgrades populated actual v11 to v12 with Antigravity provenance, stable rowids/digests/triggers/audit and valid FTS', async () => {
+  const { f, db, approved } = legacy();
+  const { migrateGeminiSources } = await import(
+    '../../packages/core/src/gemini-source-migration.js'
+  );
+  const { migrateStorageReliability } = await import(
+    '../../packages/core/src/storage-reliability-migration.js'
+  );
+  db.pragma('foreign_keys=OFF');
+  try {
+    db.transaction(() => {
+      migrateGeminiSources(db);
+      migrateStorageReliability(db);
+    }).immediate();
+  } finally {
+    db.pragma('foreign_keys=ON');
+  }
+  expect(db.pragma('user_version', { simple: true })).toBe(11);
+  const tables = ['experiences', 'skill_versions', 'skill_usage_events', 'skill_operator_events'];
+  const before = tables.map((t) => db.prepare(`SELECT rowid,* FROM ${t} ORDER BY rowid`).all());
+  const triggers = db
+    .prepare("SELECT name,sql FROM sqlite_master WHERE type='trigger' ORDER BY name")
+    .all();
+  migrate(db);
+  migrate(db);
+  expect(db.pragma('user_version', { simple: true })).toBe(12);
+  expect(tables.map((t) => db.prepare(`SELECT rowid,* FROM ${t} ORDER BY rowid`).all())).toEqual(
+    before,
+  );
+  expect(
+    db.prepare("SELECT name,sql FROM sqlite_master WHERE type='trigger' ORDER BY name").all(),
+  ).toEqual(triggers);
+  expect(db.pragma('foreign_key_check')).toEqual([]);
+  const xp = new ExperienceService(db, f.scope, 'antigravity').record({
+    problem: 'Antigravity provenance boundary',
+    solution: 'Preserve existing bytes.',
+    outcome: { status: 'unknown', summary: 'Unverified fixture.' },
+  }).experience;
+  expect(xp.source_agent).toBe('antigravity');
+  expect(
+    new ExperienceService(db, f.scope, 'codex').search({ query: 'provenance boundary' })
+      .experiences[0]?.id,
+  ).toBe(xp.id);
+  expect(
+    new SkillUsageService(db, f.scope, 'antigravity').record({
+      schema_version: 1,
+      event_id: crypto.randomUUID(),
+      version_id: approved.version.id,
+      artifact_digest: approved.version.content_hash,
+      event_type: 'task_unknown',
+    }).stored,
+  ).toBe(true);
+  expect(() =>
+    db
+      .prepare("UPDATE skill_versions SET source_agent='antigravity' WHERE id=?")
+      .run(approved.version.id),
+  ).toThrow('immutable');
 });

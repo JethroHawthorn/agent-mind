@@ -216,7 +216,7 @@ it('persists immutable evidence across restart and refuses missing evidence', ()
 it('rejects suite tampering, unknown migration versions and preserves core registry compatibility', () => {
   const f = fixture();
   const r = f.service.evaluate(f.request());
-  expect(f.db.pragma('user_version', { simple: true })).toBe(11);
+  expect(f.db.pragma('user_version', { simple: true })).toBe(12);
   expect(() => f.db.exec("UPDATE behavioral_suites SET definition_json='{}'")).toThrow('immutable');
   f.db.exec(
     "DROP TRIGGER behavioral_suites_no_update;UPDATE behavioral_suites SET definition_json='{}'",

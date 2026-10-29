@@ -4074,6 +4074,7 @@
               "codex",
               "claude",
               "gemini",
+              "antigravity",
               "unknown"
             ],
             "type": "string"
@@ -4210,6 +4211,7 @@
               "codex",
               "claude",
               "gemini",
+              "antigravity",
               "unknown"
             ],
             "type": "string"
@@ -4261,6 +4263,10 @@
         {
           "definition": "{ type: 'boolean' }",
           "name": "allow-model"
+        },
+        {
+          "definition": "{ type: 'string' }",
+          "name": "antigravity"
         },
         {
           "definition": "{ type: 'boolean' }",
@@ -4321,6 +4327,15 @@
         {
           "definition": "{ type: 'boolean' }",
           "name": "verbose"
+        }
+      ]
+    },
+    {
+      "file": "packages/mcp-server/src/antigravity/adapter.ts",
+      "options": [
+        {
+          "definition": "{ type: 'string' }",
+          "name": "enrollment"
         }
       ]
     },
@@ -6821,6 +6836,7 @@
                   "codex",
                   "claude",
                   "gemini",
+                  "antigravity",
                   "unknown"
                 ],
                 "type": "string"
@@ -7355,6 +7371,7 @@
             "codex",
             "claude",
             "gemini",
+            "antigravity",
             "unknown"
           ],
           "type": "string"
@@ -10495,6 +10512,7 @@
             "codex",
             "claude",
             "gemini",
+            "antigravity",
             "unknown"
           ],
           "type": "string"
@@ -10641,6 +10659,7 @@
         "codex",
         "claude",
         "gemini",
+        "antigravity",
         "unknown"
       ],
       "type": "string"
@@ -10851,6 +10870,7 @@
             "codex",
             "claude",
             "gemini",
+            "antigravity",
             "unknown"
           ],
           "type": "string"
@@ -10992,6 +11012,7 @@
             "codex",
             "claude",
             "gemini",
+            "antigravity",
             "unknown"
           ],
           "type": "string"
@@ -17406,6 +17427,7 @@
               "codex",
               "claude",
               "gemini",
+              "antigravity",
               "unknown"
             ],
             "type": "string"
@@ -17543,6 +17565,7 @@
               "codex",
               "claude",
               "gemini",
+              "antigravity",
               "unknown"
             ],
             "type": "string"
@@ -17679,14 +17702,14 @@
             "types": "./dist/index.d.ts"
           }
         },
+        "license": "MIT",
         "name": "@agentmind/core",
         "private": true,
         "scripts": {
           "build": "tsc -p tsconfig.json"
         },
         "type": "module",
-        "version": "0.0.1",
-        "license": "MIT"
+        "version": "0.0.1"
       },
       "path": "packages/core/package.json"
     },
@@ -17698,20 +17721,20 @@
           "better-sqlite3": "^12.0.0",
           "zod": "^4.3.0"
         },
+        "license": "MIT",
         "name": "@agentmind/mcp-server",
         "private": true,
         "scripts": {
           "build": "tsc -p tsconfig.json"
         },
         "type": "module",
-        "version": "0.0.1",
-        "license": "MIT"
+        "version": "0.0.1"
       },
       "path": "packages/mcp-server/package.json"
     }
   ],
   "schema_version": 1,
-  "storage_schema": 11,
+  "storage_schema": 12,
   "tool_error_contract": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "additionalProperties": false,

@@ -21,7 +21,8 @@ export function installerFixture() {
     const path = join(root, `fake-${id}.cjs`);
     writeFileSync(
       path,
-      `#!${process.execPath}\nconst fs=require('fs'),p=require('path'),a=process.argv.slice(2),id=${JSON.stringify(id)};\nif(a.includes('--version')){console.log(id==='codex'?'codex-cli 0.163.0':'2.1.310');process.exit(0);}\nif(a.includes('--help')){console.log('--json --scope --strict-mcp-config --no-session-persistence add list --output-format --prompt --approval-mode plan --allowed-mcp-server-names');process.exit(0);}\nif(id==='claude'){
+      `#!${process.execPath}\nconst fs=require('fs'),p=require('path'),a=process.argv.slice(2),id=${JSON.stringify(id)};\nif(a.includes('--version')){console.log(id==='codex'?'codex-cli 0.163.0':'2.1.310');process.exit(0);}\nif(a.includes('--help')){console.log('--json --scope --strict-mcp-config --no-session-persistence add list --output-format --prompt --approval-mode plan --allowed-mcp-server-names');process.exit(0);}\nif(id==='antigravity'&&a[0]==='mcp'&&a[1]==='list'){let d={};try{d=JSON.parse(fs.readFileSync(p.join(process.env.HOME,'.gemini/config/mcp_config.json'),'utf8'));}catch{};for(const [name,e] of Object.entries(d.mcpServers||{}))console.log(name+' stdio enabled '+e.command+' '+e.args.join(' '));process.exit(0);}
+if(id==='claude'){
  const file=p.join(process.env.HOME,'fixture-user-mcp.json');let store={};try{store=JSON.parse(fs.readFileSync(file,'utf8'));}catch{}
  if(a[1]==='get'&&store[a[2]]){const e=store[a[2]];console.log('Scope: User config\\n  Command: '+e.command+'\\n  Args: '+e.args.join(' ')+'\\n');process.exit(0);}
  if(a[1]==='add-json'){store[a[4]]=JSON.parse(a[5]);fs.writeFileSync(file,JSON.stringify(store),{mode:0o600});process.exit(0);}
